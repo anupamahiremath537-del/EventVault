@@ -134,9 +134,14 @@ router.get('/team-check', async (req, res) => {
 // POST /api/registrations - Sign up as volunteer or participant
 router.post('/', async (req, res) => {
   try {
-    const { eventId, name, email, phone, usn, password, type, roleId, teamDetails } = req.body;
+    const { eventId, name, email, phone, usn, password, type, roleId, teamDetails, photo } = req.body;
     if (!eventId || !name || !email || !type) return res.status(400).json({ error: 'eventId, name, email, type are required' });
     if (!['volunteer', 'participant'].includes(type)) return res.status(400).json({ error: 'type must be volunteer or participant' });
+
+    // Photo size check (base64) - roughly 100KB limit (approx 137KB base64)
+    if (photo && photo.length > 150000) {
+      return res.status(400).json({ error: 'Photo size exceeds 100KB limit' });
+    }
 
     const event = await db.findOne('events', { eventId });
     if (!event || (event.status && event.status !== 'active')) return res.status(404).json({ error: 'Event not found or inactive' });
@@ -470,7 +475,7 @@ router.post('/broadcast', authMiddleware, async (req, res) => {
     }
   }
 
-  const targetMethods = (methods && Array.isArray(methods)) ? methods : ['whatsapp'];
+  const targetMethods = (methods && Array.isArray(methods)) ? methods : ['email'];
 
   // Send immediate response to avoid browser timeout
   res.status(202).json({ success: true, message: 'Broadcast initiated in background' });

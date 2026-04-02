@@ -3,7 +3,6 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('../utils/database');
 const emailUtil = require('../utils/email');
-const QRCode = require('qrcode');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'eventvault_secret_2024';
 const ORGANIZER_SECRET_CODE = process.env.ORGANIZER_SECRET_CODE || 'ORG2024';

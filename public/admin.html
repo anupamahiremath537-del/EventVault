@@ -264,8 +264,6 @@ tr:hover td { background:rgba(108,99,255,0.03); }
 .event-meta { display:flex; flex-direction:column; gap:8px; margin-bottom:20px; }
 .event-meta-item { display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text2); font-family:'DM Mono',monospace; }
 .event-card-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top: auto; }
-.qr-preview { width:64px; height:64px; border-radius:12px; cursor:pointer; border: 1px solid var(--border); transition: all 0.3s var(--ease); }
-.qr-preview:hover { transform: scale(1.1) rotate(5deg); border-color: var(--accent); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
 
 /* ANALYTICS CHARTS */
 .chart-grid { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:32px; }
@@ -410,8 +408,6 @@ tr:hover td { background:rgba(108,99,255,0.03); }
 .empty-icon { font-size:64px; margin-bottom:16px; opacity: 0.5; }
 .empty-text { font-size:16px; font-weight: 600; }
 
-.qr-modal-img { width:260px; height:260px; border-radius:20px; display:block; margin:0 auto 24px; box-shadow: var(--shadow-lg); transition: transform 0.5s var(--ease); }
-.qr-modal-img:hover { transform: scale(1.05) rotate(2deg); }
 .copy-url { background:var(--surface2); border:2px solid var(--border); border-radius:12px; padding:14px 18px; font-family:'DM Mono',monospace; font-size:13px; word-break:break-all; color:var(--accent); margin-bottom:16px; transition: all 0.3s var(--ease); }
 .copy-url:hover { border-color: var(--accent); background: var(--surface); }
 
@@ -649,6 +645,7 @@ input[type="time"]::-webkit-calendar-picker-indicator {
           <button class="btn btn-outline btn-sm desktop-only" onclick="toggleTheme()" id="dash-theme-btn">
             <span class="theme-icon">☀️</span> <span class="theme-text">Light Mode</span>
           </button>
+          <button class="btn btn-success" onclick="openCreateTeamModal()">+ Create Volunteer Team</button>
           <button class="btn btn-primary" onclick="showPage('events');openCreateModal()">+ New Event</button>
         </div>
       </div>
@@ -686,6 +683,7 @@ input[type="time"]::-webkit-calendar-picker-indicator {
           <button class="btn btn-outline btn-sm desktop-only" onclick="toggleTheme()" id="events-theme-btn">
             <span class="theme-icon">☀️</span> <span class="theme-text">Light Mode</span>
           </button>
+          <button class="btn btn-success" onclick="openCreateTeamModal()">+ Create Volunteer Team</button>
           <button class="btn btn-primary" onclick="openCreateModal()">+ Create Event</button>
         </div>
       </div>
@@ -925,15 +923,16 @@ input[type="time"]::-webkit-calendar-picker-indicator {
     </div>
     <div class="modal-body">
       <input type="hidden" id="edit-event-id">
+      <input type="hidden" id="ev-is-supportive-team" value="false">
       <div class="form-row">
         <div class="form-group"><label>Event Title *</label><input type="text" id="ev-title"></div>
-        <div class="form-group"><label>Category</label>
+        <div class="form-group" id="group-category"><label>Category</label>
           <select id="ev-category" onchange="toggleEventType()">
             <option value="" disabled selected>Select Category</option>
             <option>General</option><option>Cultural</option><option>Technical</option><option>Sports</option><option>Academic</option><option>Community</option>
           </select>
         </div>
-        <div class="form-group">
+        <div class="form-group" id="group-scope">
           <label>Event Scope</label>
           <select id="ev-scope">
             <option value="" disabled selected>Select Scope</option>
@@ -941,7 +940,7 @@ input[type="time"]::-webkit-calendar-picker-indicator {
             <option value="outhouse">Outhouse</option>
           </select>
         </div>
-        <div class="form-group">
+        <div class="form-group" id="group-type">
           <label>Event Type</label>
           <select id="ev-event-type" onchange="toggleEventType()">
             <option value="individual">Individual</option>
@@ -949,7 +948,7 @@ input[type="time"]::-webkit-calendar-picker-indicator {
           </select>
         </div>
       </div>
-      <div class="form-row">
+      <div class="form-row" id="group-datetime">
         <div class="form-group"><label>Date *</label><input type="date" id="ev-date"></div>
         <div class="form-group">
           <label>Start Time *</label>
@@ -975,7 +974,7 @@ input[type="time"]::-webkit-calendar-picker-indicator {
         </div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Participant Limit</label><input type="number" id="ev-limit" min="1"></div>
+        <div class="form-group"><label for="ev-limit">Participant Limit</label><input type="number" id="ev-limit" min="1"></div>
         <div class="form-group" id="team-size-container" style="display:none">
           <label>Team Size</label>
           <input type="number" id="ev-team-size" min="1">
@@ -1001,11 +1000,6 @@ input[type="time"]::-webkit-calendar-picker-indicator {
       </div>
     </div>
   </div>
-</div>
-
-<!-- QR CODE MODAL -->
-<div class="modal-overlay" id="qr-modal">
-...
 </div>
 
 <!-- RESULTS MODAL -->
@@ -1793,6 +1787,15 @@ function openCreateModal() {
   editingEventId = null; editingEventStatus = 'active'; roles = [];
   document.getElementById('modal-title').textContent = 'Create Event';
   document.getElementById('save-btn-text').textContent = 'Create Event';
+  document.getElementById('ev-is-supportive-team').value = 'false';
+  document.querySelector('label[for="ev-limit"]').textContent = 'Participant Limit';
+  
+  // Show all event fields
+  document.getElementById('group-category').style.display = 'block';
+  document.getElementById('group-scope').style.display = 'block';
+  document.getElementById('group-type').style.display = 'block';
+  document.getElementById('group-datetime').style.display = 'flex';
+  
   document.getElementById('ev-title').value = '';
   document.getElementById('ev-category').value = '';
   document.getElementById('ev-scope').value = '';
@@ -1819,12 +1822,52 @@ function openCreateModal() {
   document.getElementById('event-modal').classList.add('open');
 }
 
+function openCreateTeamModal() {
+  editingEventId = null; editingEventStatus = 'active'; roles = [];
+  document.getElementById('modal-title').textContent = 'Create Volunteer Team';
+  document.getElementById('save-btn-text').textContent = 'Create Team';
+  document.getElementById('ev-is-supportive-team').value = 'true';
+  document.querySelector('label[for="ev-limit"]').textContent = 'Total Slots Required *';
+  
+  // Hide event-specific fields to simplify
+  document.getElementById('group-category').style.display = 'none';
+  document.getElementById('group-scope').style.display = 'none';
+  document.getElementById('group-type').style.display = 'none';
+  document.getElementById('group-datetime').style.display = 'none';
+
+  document.getElementById('ev-title').value = '';
+  document.getElementById('ev-category').value = 'Community';
+  document.getElementById('ev-scope').value = 'outhouse';
+  document.getElementById('ev-event-type').value = 'individual';
+  document.getElementById('ev-location').value = 'BGMIT Mudhol';
+  document.getElementById('ev-desc').value = '';
+  toggleEventType();
+  renderRoles();
+  document.getElementById('event-modal').classList.add('open');
+}
+
 function openEditModal(ev) {
   editingEventId = ev.eventId;
   editingEventStatus = ev.status || 'active';
   roles = (ev.volunteerRoles || []).map(r => ({ ...r }));
-  document.getElementById('modal-title').textContent = 'Edit Event';
+  document.getElementById('modal-title').textContent = ev.isSupportiveTeam ? 'Edit Volunteer Team' : 'Edit Event';
   document.getElementById('save-btn-text').textContent = 'Save Changes';
+  document.getElementById('ev-is-supportive-team').value = ev.isSupportiveTeam ? 'true' : 'false';
+  document.querySelector('label[for="ev-limit"]').textContent = ev.isSupportiveTeam ? 'Total Slots Required *' : 'Participant Limit';
+  
+  // Show/Hide fields based on type
+  if (ev.isSupportiveTeam) {
+    document.getElementById('group-category').style.display = 'none';
+    document.getElementById('group-scope').style.display = 'none';
+    document.getElementById('group-type').style.display = 'none';
+    document.getElementById('group-datetime').style.display = 'none';
+  } else {
+    document.getElementById('group-category').style.display = 'block';
+    document.getElementById('group-scope').style.display = 'block';
+    document.getElementById('group-type').style.display = 'block';
+    document.getElementById('group-datetime').style.display = 'flex';
+  }
+
   document.getElementById('ev-title').value = ev.title;
   document.getElementById('ev-category').value = ev.category || 'General';
   document.getElementById('ev-scope').value = ev.scope || 'inhouse';
@@ -1903,48 +1946,52 @@ async function saveEvent() {
   }
 
   const location = document.getElementById('ev-location').value.trim();
-  if (!title || !date || !time || !location) { toast('Title, date, time and location are required', 'error'); return; }
-  const validRoles = roles.filter(r => r.name.trim() && r.slots > 0);
+  const isSupportiveTeam = document.getElementById('ev-is-supportive-team').value === 'true';
+
+  // For supportive teams, we bypass strict date/time validation as they are hidden
+  if (!isSupportiveTeam) {
+    if (!title || !date || !time || !location) { toast('Title, date, time and location are required', 'error'); return; }
+  } else {
+    if (!title || !location) { toast('Team Name and Location are required', 'error'); return; }
+  }
+
+  let validRoles = roles.filter(r => r.name.trim() && r.slots > 0);
+  const participantLimit = parseInt(document.getElementById('ev-limit').value) || 100;
+
+  if (isSupportiveTeam && validRoles.length === 0) {
+    validRoles = [{ id: crypto.randomUUID(), name: 'General Volunteer', slots: participantLimit }];
+  }
+
   const teamMode = document.getElementById('ev-event-type').value;
   const scope = document.getElementById('ev-scope').value;
   const body = { 
-    title, date, time, endTime, location, 
+    title, 
+    date: isSupportiveTeam ? (date || new Date().toISOString().split('T')[0]) : date, 
+    time: isSupportiveTeam ? (time || '09:00') : time, 
+    endTime, location, 
     description: document.getElementById('ev-desc').value, 
-    participantLimit: document.getElementById('ev-limit').value || 100, 
+    participantLimit, 
     teamSize: document.getElementById('ev-team-size').value, 
     teamMode, 
     category: document.getElementById('ev-category').value, 
     scope, 
     status: editingEventStatus,
-    volunteerRoles: validRoles 
+    volunteerRoles: validRoles,
+    isSupportiveTeam
   };
   document.getElementById('save-btn-text').innerHTML = '<span class="spinner"></span>';
   try {
-    if (editingEventId) { await put(`/events/${editingEventId}`, body); toast('Event updated!', 'success'); }
-    else { await post('/events', body); toast('Event created!', 'success'); }
+    if (editingEventId) { await put(`/events/${editingEventId}`, body); toast('Saved successfully!', 'success'); }
+    else { await post('/events', body); toast('Created successfully!', 'success'); }
     closeModal(); loadEvents(); loadDashboard();
   } catch(e) { toast(e.message, 'error'); }
-  document.getElementById('save-btn-text').textContent = editingEventId ? 'Save Changes' : 'Create Event';
+  document.getElementById('save-btn-text').textContent = editingEventId ? 'Save Changes' : (isSupportiveTeam ? 'Create Team' : 'Create Event');
 }
 
 async function deleteEvent(id) {
   if (!confirm('Delete this event?')) return;
   try { await del(`/events/${id}`); toast('Event deleted', 'success'); loadEvents(); loadDashboard(); }
   catch(e) { toast(e.message, 'error'); }
-}
-
-// ─── QR CODE ─────────────────────────────────────────────
-function showQR(id, title, qrData, url) {
-  document.getElementById('qr-img').src = qrData;
-  document.getElementById('qr-event-name').textContent = title;
-  document.getElementById('qr-url').textContent = url;
-  document.getElementById('qr-modal').classList.add('open');
-  document.getElementById('qr-modal').dataset.url = url;
-}
-function closeQRModal() { document.getElementById('qr-modal').classList.remove('open'); }
-function copySignupUrl() {
-  navigator.clipboard.writeText(document.getElementById('qr-modal').dataset.url);
-  toast('URL copied!', 'success');
 }
 
 // ─── REGISTRATIONS ────────────────────────────────────────

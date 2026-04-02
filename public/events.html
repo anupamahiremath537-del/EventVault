@@ -167,7 +167,7 @@ let allEvents = [], currentCat = 'all', searchQuery = '';
 
 async function loadEvents() {
   try {
-    const r = await fetch(API + '/events');
+    const r = await fetch(API + '/events?isSupportiveTeam=false');
     allEvents = await r.json();
     renderEvents();
   } catch(e) { toast(e.message, 'error'); }

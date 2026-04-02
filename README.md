@@ -25,7 +25,6 @@ npm start
 - ✅ Secure JWT login authentication
 - ✅ Create/edit/delete events with full details
 - ✅ Define volunteer roles with fixed slot counts
-- ✅ Automatic QR code generation linking to sign-up page
 - ✅ View all registrations in table format
 - ✅ Export registrations to CSV
 - ✅ Check-in volunteers and mark no-shows
@@ -42,27 +41,9 @@ npm start
 - ✅ Cancel registrations
 - ✅ Request shift swaps (notifies organizer)
 
-### QR Code Sign-up (`/signup/:eventId`)
-- ✅ Mobile-optimized sign-up page
-- ✅ Accessible via QR code scan
-- ✅ Same sign-up flow optimized for mobile
-
 ### Notifications
-- ✅ WhatsApp confirmation on registration (via Twilio)
-- ✅ 24-hour reminder before event (cron job)
-- ✅ 1-hour reminder before event (cron job)
-- ✅ Simulated mode if Twilio not configured (logs to console)
-
-## 🔧 WhatsApp Setup (Optional)
-
-1. Sign up at [twilio.com](https://twilio.com)
-2. Enable **WhatsApp Sandbox** in your Twilio console
-3. Add credentials to `.env`:
-   ```
-   TWILIO_ACCOUNT_SID=ACxxxxxx
-   TWILIO_AUTH_TOKEN=your_token
-   TWILIO_WHATSAPP_FROM=whatsapp:+14155238886
-   ```
+- ✅ Email confirmation on registration
+- ✅ Broadcast messages to registered users
 
 ## 🛠 Tech Stack
 
@@ -71,8 +52,6 @@ npm start
 | Backend | Node.js + Express |
 | Database | NeDB (embedded, file-based) |
 | Auth | JWT (jsonwebtoken) + bcryptjs |
-| QR Codes | qrcode npm package |
-| Notifications | Twilio WhatsApp API |
 | Scheduling | node-cron |
 | CSV Export | csv-stringify |
 | Frontend | Vanilla HTML/CSS/JS |
@@ -84,19 +63,18 @@ event-app/
 ├── server.js              # Express server entry point
 ├── routes/
 │   ├── auth.js            # Login/verify endpoints
-│   ├── events.js          # Event CRUD + QR + CSV
+│   ├── events.js          # Event CRUD + CSV
 │   ├── registrations.js   # Sign-up, cancel, swap, check-in
 │   └── analytics.js       # Dashboard stats
 ├── middleware/
 │   └── auth.js            # JWT middleware
 ├── utils/
 │   ├── database.js        # NeDB setup + helpers
-│   ├── whatsapp.js        # Twilio WhatsApp service
+│   ├── email.js           # Email service
 │   └── reminders.js       # Scheduled reminder logic
 ├── public/
 │   ├── index.html         # Volunteer & Participant Panel
 │   ├── admin.html         # Organizer Dashboard
-│   └── signup.html        # QR Code Sign-up Page
 ├── data/                  # NeDB database files (auto-created)
 └── .env                   # Environment variables
 ```

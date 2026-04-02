@@ -111,14 +111,16 @@ header {
 </div>
 
 <script>
+const API = '/api';
+
 async function loadPastEvents() {
   try {
-    const r = await fetch('/api/events');
-    const allEvents = await r.json();
+    const r = await fetch(API + '/events?isSupportiveTeam=false');
+    const events = await r.json();
     const now = new Date();
     
     // Filter for past events
-    const pastEvents = allEvents.filter(e => {
+    const pastEvents = events.filter(e => {
       const evDate = new Date(e.date);
       evDate.setHours(23, 59, 59, 999);
       return evDate < now;
@@ -146,7 +148,6 @@ async function loadPastEvents() {
 
     grid.innerHTML = pastEvents.map(ev => {
       const evDate = new Date(ev.date);
-      // Ensure we always have a background image with case-insensitive lookup
       const lookupCat = (ev.category || 'general').trim().toLowerCase();
       const eventImg = imageMap[lookupCat] || imageMap['general'];
       

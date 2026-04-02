@@ -1,6 +1,5 @@
 const router = require('express').Router();
 const { v4: uuidv4 } = require('uuid');
-const QRCode = require('qrcode');
 const { stringify } = require('csv-stringify');
 const db = require('../utils/database');
 const authMiddleware = require('../middleware/auth');
@@ -25,6 +24,13 @@ router.get('/', async (req, res) => {
     // Filter by results status if requested
     if (req.query.hasResults === 'true') {
       events = events.filter(e => e.results && Object.keys(e.results).length > 0);
+    }
+
+    // Filter by supportive team status
+    if (req.query.isSupportiveTeam === 'true') {
+      events = events.filter(e => e.isSupportiveTeam === true);
+    } else if (req.query.isSupportiveTeam === 'false') {
+      events = events.filter(e => e.isSupportiveTeam !== true);
     }
     
     if (user && user.role === 'organizer') {
@@ -114,13 +120,12 @@ router.post('/', authMiddleware, async (req, res) => {
       return res.status(403).json({ error: 'Your account is pending approval. You cannot create events yet.' });
     }
 
-    const { title, date, time, endTime, location, description, participantLimit, volunteerRoles, category, teamSize, teamMode, scope } = req.body;
+    const { title, date, time, endTime, location, description, participantLimit, volunteerRoles, category, teamSize, teamMode, scope, isSupportiveTeam } = req.body;
     if (!title || !date || !time || !location) return res.status(400).json({ error: 'Title, date, time, location are required' });
 
     const eventId = uuidv4();
     const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
     const signupUrl = `${baseUrl}/signup/${eventId}`;
-    const qrCode = await QRCode.toDataURL(signupUrl, { width: 300, margin: 2, color: { dark: '#1a1a2e', light: '#ffffff' } });
 
     const roles = (volunteerRoles || []).map(r => ({ ...r, id: r.id || uuidv4() }));
 
@@ -129,9 +134,10 @@ router.post('/', authMiddleware, async (req, res) => {
       participantLimit: parseInt(participantLimit) || 100,
       volunteerRoles: roles, category: category || 'General',
       scope: scope || 'inhouse',
+      isSupportiveTeam: isSupportiveTeam === true,
       teamMode: teamMode || 'individual',
       teamSize: teamMode === 'team' ? (parseInt(teamSize) || 0) : 0,
-      signupUrl, qrCode, status: 'active',
+      signupUrl, status: 'active',
       createdAt: new Date(), createdBy: req.user.username,
     });
     res.status(201).json(event);
@@ -152,7 +158,7 @@ router.put('/:eventId', authMiddleware, async (req, res) => {
       if (event.createdBy !== req.user.username) return res.status(403).json({ error: 'Access denied' });
     }
 
-    const { title, date, time, endTime, location, description, participantLimit, volunteerRoles, category, teamSize, teamMode, scope, status } = req.body;
+    const { title, date, time, endTime, location, description, participantLimit, volunteerRoles, category, teamSize, teamMode, scope, status, isSupportiveTeam } = req.body;
     const roles = (volunteerRoles || []).map(r => ({ ...r, id: r.id || uuidv4() }));
     const targetId = event.eventId || req.params.eventId;
     await db.update('events', { eventId: targetId }, { $set: { 
@@ -166,6 +172,7 @@ router.put('/:eventId', authMiddleware, async (req, res) => {
       volunteerRoles: roles, 
       category, 
       scope: scope || 'inhouse', 
+      isSupportiveTeam: isSupportiveTeam === true,
       teamMode: teamMode || 'individual', 
       teamSize: teamMode === 'team' ? (parseInt(teamSize) || 0) : 0, 
       status: status || 'active', 
