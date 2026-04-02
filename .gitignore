@@ -20,4 +20,4 @@ build/
 
 # IDE files
 .vscode/
-.idea/
+.idea/firebase-service-account.json 
