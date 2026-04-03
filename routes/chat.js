@@ -8,8 +8,11 @@ let genAI = null;
 let model = null;
 
 if (GEMINI_API_KEY) {
+  console.log('✅ Gemini API Key detected. Initializing...');
   genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-  model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+  model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+} else {
+  console.error('❌ GEMINI_API_KEY is missing from environment variables!');
 }
 
 router.post('/', async (req, res) => {
@@ -62,13 +65,13 @@ router.post('/', async (req, res) => {
     }
 
     // Load organizer for mentioned item
-    let organizerInfo = { name: "Organizer", email: "bgmitcs034@gmail.com" };
+    let organizerInfo = { name: "Organizer", email: "bgmitcs034@gmail.com", phone: "+91 6363338238" };
     if (mentionedItem) {
       const organizer = await db.findOne('users', { username: mentionedItem.createdBy });
       if (organizer) {
-        organizerInfo = { name: organizer.name, email: organizer.email };
+        organizerInfo = { name: organizer.name, email: organizer.email, phone: organizer.phone || "+91 6363338238" };
       } else {
-        organizerInfo = { name: mentionedItem.createdBy, email: mentionedItem.createdBy };
+        organizerInfo = { name: mentionedItem.createdBy, email: mentionedItem.createdBy, phone: "+91 6363338238" };
       }
     }
 
@@ -92,8 +95,20 @@ router.post('/', async (req, res) => {
     else if (input.includes('who developed') || input.includes('creator') || input.includes('who made') || input.includes('developer')) {
       reply = "EventVault was developed by <b>Anupama S H</b>, <b>Kedar K D</b> (6th Sem), and <b>Amogh I Y</b> (4th Sem) from the <b>CSE Department</b> at BGMIT.";
     }
-    else if (input.includes('contact') || input.includes('support') || input.includes('help')) {
-      reply = "For technical issues, contact the admin at <b>bgmitcs034@gmail.com</b> or visit the CSE Department.";
+    else if ((input.includes('admin') || input.includes('panel')) && (input.includes('password') || input.includes('login') || input.includes('cred'))) {
+      reply = "I'm sorry, but since this is a sensitive matter, I cannot share any information related to it.";
+    }
+    else if (input.includes('supportive team') || (input.includes('supportive') && input.includes('team'))) {
+      if (supportiveTeams.length > 0) {
+        reply = "We have the following <b>Supportive Teams</b> you can join:<br>" + 
+                supportiveTeams.map(t => `- <b>${t.title}</b> (Handling by: ${t.createdBy.replace('admin@eventvault.org', 'bgmitcs034@gmail.com')})`).join('<br>') +
+                "<br>Click the blue <b>Supportive Teams</b> button on the home page to join!";
+      } else {
+        reply = "There are currently no active <b>Supportive Teams</b>. Check back later!";
+      }
+    }
+    else if (input.includes('contact') || input.includes('technical support') || (input.includes('help') && !input.includes('event'))) {
+      reply = "For technical issues, contact the admin at <b>bgmitcs034@gmail.com</b> (Contact: +91 6363338238) or visit the CSE Department.";
     }
 
     // FALLBACK TO GEMINI (Primary NLP engine)
@@ -107,13 +122,15 @@ UPCOMING EVENTS:
 ${upcomingEvents.length > 0 ? upcomingEvents.map(e => `- ${e.title}: ${e.date} at ${e.time}, Venue: ${e.location}, Cat: ${e.category}, Mode: ${e.teamMode}`).join('\n') : 'No upcoming events.'}
 
 SUPPORTIVE TEAMS (Volunteering groups):
-${supportiveTeams.length > 0 ? supportiveTeams.map(t => `- ${t.title}: Venue: ${t.location}, Role: ${t.volunteerRoles ? t.volunteerRoles.map(r=>r.name).join(', ') : 'Volunteer'}, Desc: ${t.description}`).join('\n') : 'No active supportive teams.'}
+${supportiveTeams.length > 0 ? supportiveTeams.map(t => `- ${t.title}: Venue: ${t.location}, Role: ${t.volunteerRoles ? t.volunteerRoles.map(r=>r.name).join(', ') : 'Volunteer'}, Handling by: ${t.createdBy.replace('admin@eventvault.org', 'bgmitcs034@gmail.com')}, Description: ${t.description}`).join('\n') : 'No active supportive teams.'}
 
 PAST EVENTS:
 ${pastEvents.length > 0 ? pastEvents.map(e => `- ${e.title}: held on ${e.date}`).join('\n') : 'No past event records.'}
 
 ${mentionedItem ? `USER IS ASKING ABOUT: ${mentionedItem.title}
-- Organizer: ${organizerInfo.name} (${organizerInfo.email})
+- Type: ${mentionedItem.isSupportiveTeam ? 'Supportive Team' : 'General Event'}
+- Handling/Organizer: ${organizerInfo.name} (${organizerInfo.email.replace('admin@eventvault.org', 'bgmitcs034@gmail.com')})
+- Contact: ${organizerInfo.phone}
 - Details: ${mentionedItem.description || 'N/A'}
 - Registration Type: ${mentionedItem.isSupportiveTeam ? 'Supportive Team Join' : 'Event Registration'}` : ''}
 
@@ -133,7 +150,8 @@ INSTRUCTIONS:
 - Use <br> for lines.
 - Always provide specific details from the lists above.
 - If asking for registration for a supportive team, specify the "Supportive Teams" button.
-- If asking for organizer/faculty, provide: ${organizerInfo.name} (${organizerInfo.email}).
+- If asking for organizer/faculty/handling, provide: ${organizerInfo.name} (${organizerInfo.email}, Contact: ${organizerInfo.phone}).
+- If asked about "supportive teams" generally, list them and mention they are handled by their respective creators.
 
 User: "${message}"
 `;

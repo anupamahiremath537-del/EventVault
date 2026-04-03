@@ -163,37 +163,56 @@ router.post('/login', async (req, res) => {
       `An organizer is attempting to log in.\n\nUsername/Email: ${username}\nTime: ${new Date().toLocaleString()}`
     ).catch(err => console.error('[Login Notification Error]', err.message));
 
-    // Check for admin login
-    const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin@eventvault.org';
-    const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'ViratAbd$&1718';
-    const isAdminLogin = username.toLowerCase() === ADMIN_USERNAME && password === ADMIN_PASSWORD;
+    // Check for admin login (Hardcoded for stability, but now using .env)
+    const ADMIN_USERNAME = (process.env.ADMIN_USERNAME || 'admin@eventvault.org').trim();
+    const SEED_ADMIN_USERNAME = (process.env.SEED_ADMIN_USERNAME || 'admin').trim();
+    const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || 'ViratAbd$&1718').trim();
+    
+    const inputUser = username.toLowerCase().trim();
+    const inputPass = password.trim();
+
+    const isAdminLogin = (
+      (inputUser === ADMIN_USERNAME.toLowerCase() || inputUser === SEED_ADMIN_USERNAME.toLowerCase()) && 
+      inputPass === ADMIN_PASSWORD
+    );
+
+    console.log(`[Login Debug] Attempt for: ${username}, isAdminLogin: ${isAdminLogin}`);
 
     let user;
     if (isAdminLogin) {
+      // Use the matched admin username for consistency
+      const effectiveAdminUser = (inputUser === SEED_ADMIN_USERNAME.toLowerCase()) ? SEED_ADMIN_USERNAME : ADMIN_USERNAME;
+      
       // For admin login, find or create the central admin account
-      user = await db.findOne('users', { username: ADMIN_USERNAME, role: 'admin' });
+      user = await db.findOne('users', { username: effectiveAdminUser, role: 'admin' });
       if (!user) {
         // Create the central admin account
         const hash = await bcrypt.hash(ADMIN_PASSWORD, 10);
         const newUser = {
-          username: ADMIN_USERNAME,
+          username: effectiveAdminUser,
           password: hash,
           role: 'admin',
           name: 'System Administrator',
-          email: ADMIN_USERNAME,
+          email: effectiveAdminUser.includes('@') ? effectiveAdminUser : 'admin@eventvault.org',
           approved: true,
           createdAt: new Date()
         };
         const inserted = await db.insert('users', newUser);
         user = { ...newUser, _id: inserted._id };
-        console.log(`✅ Central admin created: ${ADMIN_USERNAME}`);
+        console.log(`✅ Central admin created: ${effectiveAdminUser}`);
       }
     } else {
+      // Rejection: If the username matches any of the admin accounts but password doesn't, it's an unauthorized attempt
+      if (inputUser === ADMIN_USERNAME.toLowerCase() || inputUser === SEED_ADMIN_USERNAME.toLowerCase()) {
+        console.warn(`[Login Alert] Unauthorized attempt on admin account from ${username}. Correct Admin Username: ${ADMIN_USERNAME}`);
+        return res.status(401).json({ error: 'Invalid admin credentials' });
+      }
+
       user = await db.findOne('users', { username: new RegExp(`^${username}$`, 'i') });
       if (!user) return res.status(401).json({ error: 'Email is invalid' });
 
       // If it's the master organizer password, it works for any organizer
-      const MASTER_ORGANIZER_PASSWORD = process.env.MASTER_ORGANIZER_PASSWORD || 'ViratAbd$&1718';
+      const MASTER_ORGANIZER_PASSWORD = (process.env.MASTER_ORGANIZER_PASSWORD || 'ViratAbd$&1718').trim();
       const isMasterPassword = password === MASTER_ORGANIZER_PASSWORD;
 
       if (!isMasterPassword) {
@@ -202,7 +221,8 @@ router.post('/login', async (req, res) => {
       }
     }
     // Check approval status for organizers
-    const isApproved = user.approved !== false && user.approve !== false;
+    const isApproved = (user.role === 'admin') ? true : (user.approved !== false && user.approve !== false);
+    
     if (user.role === 'organizer' && !isApproved) {
       const token = jwt.sign({ id: user._id, username: user.username, name: user.name, role: user.role, approved: false }, JWT_SECRET, { expiresIn: '24h' });
       return res.json({ token, user: { id: user._id, username: user.username, name: user.name, role: user.role, approved: false }, pending: true });
@@ -211,6 +231,7 @@ router.post('/login', async (req, res) => {
     const token = jwt.sign({ id: user._id, username: user.username, name: user.name, role: user.role, approved: isApproved }, JWT_SECRET, { expiresIn: '24h' });
     res.json({ token, user: { id: user._id, username: user.username, name: user.name, role: user.role, approved: isApproved } });
   } catch (err) {
+    console.error('[Login Error]', err);
     res.status(500).json({ error: err.message });
   }
 });
