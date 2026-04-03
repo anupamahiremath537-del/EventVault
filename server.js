@@ -1,4 +1,5 @@
 require('dotenv').config();
+const functions = require('firebase-functions');
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -22,7 +23,6 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
-app.use(express.static(path.join(__dirname, 'public')));
 
 // API Routes
 app.use('/api/auth', authRoutes);
@@ -32,13 +32,54 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/certificates', certificateRoutes);
 app.use('/api/chat', chatRoutes);
 
-// Serve pages
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
-app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
-app.get('/choice/:eventId', (req, res) => res.sendFile(path.join(__dirname, 'public', 'choice.html')));
-app.get('/signup/:eventId', (req, res) => res.sendFile(path.join(__dirname, 'public', 'signup.html')));
-app.get('/user-login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'user-login.html')));
-app.get('/user-signup', (req, res) => res.sendFile(path.join(__dirname, 'public', 'user-signup.html')));
+// For local development only
+if (!process.env.FUNCTION_NAME && !process.env.K_SERVICE) {
+  app.use(express.static(path.join(__dirname, 'public')));
+  
+  // Serve pages for local development
+  app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+  app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
+  app.get('/choice/:eventId', (req, res) => res.sendFile(path.join(__dirname, 'public', 'choice.html')));
+  app.get('/signup/:eventId', (req, res) => res.sendFile(path.join(__dirname, 'public', 'signup.html')));
+  app.get('/user-login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'user-login.html')));
+  app.get('/user-signup', (req, res) => res.sendFile(path.join(__dirname, 'public', 'user-signup.html')));
+
+  app.listen(PORT, () => {
+    console.log(`\n🎉 Event App running locally at: http://localhost:${PORT}\n`);
+    seedAdmin();
+  });
+
+  // Local node-cron setup
+  cron.schedule('*/15 * * * *', () => {
+    reminderService.sendReminders();
+  });
+  cron.schedule('0 9,12,15,18,21 * * *', sendDailyCSVReport);
+}
+
+// ─── FIREBASE CLOUD FUNCTIONS ─────────────────────────────────────────────
+
+// Main API Export
+exports.api = functions.https.onRequest(app);
+
+// Scheduled Reminders
+exports.scheduledReminders = functions.pubsub
+  .schedule('every 15 minutes')
+  .onRun(async (context) => {
+    console.log('[Scheduled] Running reminders...');
+    await reminderService.sendReminders();
+    return null;
+  });
+
+// Scheduled CSV Report (Runs at 9am, 12pm, 3pm, 6pm, 9pm IST)
+exports.scheduledDailyReport = functions.pubsub
+  .schedule('0 9,12,15,18,21 * * *')
+  .timeZone('Asia/Kolkata')
+  .onRun(async (context) => {
+    await sendDailyCSVReport();
+    return null;
+  });
+
+// ─── UTILS ────────────────────────────────────────────────────────────────
 
 // Seed admin user on startup
 async function seedAdmin() {
@@ -61,18 +102,13 @@ async function seedAdmin() {
   }
 }
 
-// Cron: Check reminders every 15 minutes
-cron.schedule('*/15 * * * *', () => {
-  reminderService.sendReminders();
-});
-
 // Automated CSV Reports
 async function sendDailyCSVReport() {
   console.log('[Scheduled Report] Generating automated CSV export...');
   try {
     const regs = await db.find('registrations', { status: { $ne: 'cancelled' } });
     const rows = [['Event', 'Name', 'Email', 'USN', 'Phone', 'Type', 'Role / Event', 'Team Name', 'Status', 'Registered At', 'Check-in']];
-    
+
     // Enrich with event titles
     const enriched = await Promise.all(regs.map(async r => {
       const event = await db.findOne('events', { eventId: r.eventId });
@@ -82,25 +118,25 @@ async function sendDailyCSVReport() {
         registeredAt: r.registeredAt
       };
     }));
-    
+
     // Sort by registration date descending
     enriched.sort((a, b) => new Date(b.registeredAt) - new Date(a.registeredAt));
-    
+
     enriched.forEach(item => rows.push(item.data));
 
     stringify(rows, async (err, output) => {
       if (err) return console.error('[Scheduled Report] CSV Error:', err);
-      
+
       const timestamp = new Date().toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' });
       const subject = `EventVault Automated Report - ${timestamp}`;
       const text = `Please find attached the automated registrations report for all events as of ${timestamp}.`;
       const filename = `eventvault-report-${new Date().toISOString().split('T')[0]}.csv`;
 
       await emailUtil.sendEmail(
-        process.env.ADMIN_EMAIL || 'bgmitcs034@gmail.com', 
-        subject, 
-        text, 
-        null, 
+        process.env.ADMIN_EMAIL || 'bgmitcs034@gmail.com',
+        subject,
+        text,
+        null,
         [{ filename, content: output }]
       );
       console.log('[Scheduled Report] Report emailed successfully to admin.');
@@ -110,13 +146,9 @@ async function sendDailyCSVReport() {
   }
 }
 
-// Schedule: 9am, 12pm, 3pm, 6pm, 9pm
-cron.schedule('0 9,12,15,18,21 * * *', sendDailyCSVReport);
-cron.schedule('41 15 * * *', sendDailyCSVReport);
-// Schedule: 11:59pm
-cron.schedule('59 23 * * *', sendDailyCSVReport);
-
-app.listen(PORT, () => {
-  console.log(`\n🎉 Event App running at: http://localhost:${PORT}\n`);
-  seedAdmin();
-});
+// Cloud Function environment handles execution
+module.exports = {
+  api: exports.api,
+  scheduledReminders: exports.scheduledReminders,
+  scheduledDailyReport: exports.scheduledDailyReport
+};
