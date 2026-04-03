@@ -15,7 +15,7 @@ npm start
 ```
 
 ## 🔐 Admin Credentials
-Admin credentials are managed via environment variables in your `.env` file. 
+Admin credentials and Firebase configuration are managed via environment variables and the `firebase-service-account.json` file. 
 
 - **URL**: `http://localhost:3000/admin`
 - **Default (if not set)**: `admin` / `ViratAbd$&1718`
@@ -25,6 +25,7 @@ See `.env` for:
 - `SEED_ADMIN_PASSWORD`
 - `ADMIN_USERNAME` (for secondary login)
 - `ADMIN_PASSWORD`
+- `FIREBASE_SERVICE_ACCOUNT` (Optional, as an alternative to the JSON file)
 
 ## 📋 Features
 
@@ -57,7 +58,7 @@ See `.env` for:
 | Layer | Technology |
 |-------|-----------|
 | Backend | Node.js + Express |
-| Database | NeDB (embedded, file-based) |
+| Database | Firebase Firestore (Cloud Database) |
 | Auth | JWT (jsonwebtoken) + bcryptjs |
 | Scheduling | node-cron |
 | CSV Export | csv-stringify |
@@ -76,13 +77,13 @@ event-app/
 ├── middleware/
 │   └── auth.js            # JWT middleware
 ├── utils/
-│   ├── database.js        # NeDB setup + helpers
+│   ├── database.js        # Firebase/Firestore setup + helpers
 │   ├── email.js           # Email service
 │   └── reminders.js       # Scheduled reminder logic
 ├── public/
 │   ├── index.html         # Volunteer & Participant Panel
 │   ├── admin.html         # Organizer Dashboard
-├── data/                  # NeDB database files (auto-created)
+├── firebase-service-account.json  # Firebase Admin SDK credentials
 └── .env                   # Environment variables
 ```
 
