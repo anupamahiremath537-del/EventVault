@@ -46,7 +46,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
   // For Google Cloud Run, it's better to always listen on PORT (which defaults to 8080)
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`\n🚀 Event App running at http://0.0.0.0:${PORT}\n`);
+    console.log(`\n🚀 Event App running at http://localhost:${PORT}\n`);
     seedAdmin();
   });
 

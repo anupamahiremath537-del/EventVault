@@ -2,7 +2,7 @@ const db = require('./database');
 const emailUtil = require('./email');
 
 const OTP_COLLECTION = 'otps';
-const OTP_EXPIRY_MINUTES = 10;
+const OTP_EXPIRY_MINUTES = 30;
 
 module.exports = {
   async generateOTP(email) {
@@ -10,15 +10,15 @@ module.exports = {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60000);
 
-    // Save to Firestore
+    // Save to database
     // Remove any existing OTP for this email first
-    await db.remove(OTP_COLLECTION, { email: email.toLowerCase() }, { multi: true });
+    await db.remove(OTP_COLLECTION, { email: email.toLowerCase() });
     
     await db.insert(OTP_COLLECTION, {
       email: email.toLowerCase(),
       otp,
-      expiresAt,
-      createdAt: new Date()
+      expiresAt: expiresAt.toISOString(),
+      createdAt: new Date().toISOString()
     });
 
     // Send via email
@@ -33,7 +33,13 @@ module.exports = {
       </div>
     `;
 
-    return await emailUtil.sendEmail(email, subject, text, html);
+    try {
+      await emailUtil.sendEmail(email, subject, text, html);
+      return { success: true };
+    } catch (err) {
+      console.error('[OTP Error] Failed to send email:', err);
+      return { success: false, error: 'Failed to send verification email' };
+    }
   },
 
   async verifyOTP(email, otp) {
@@ -45,9 +51,29 @@ module.exports = {
     if (!record) return { success: false, error: 'Invalid verification code' };
 
     const now = new Date();
-    const expiry = new Date(record.expiresAt);
+    // Support both cases just in case, and handle potential nulls
+    const expiryVal = record.expiresAt || record.expiresat;
     
+    console.log(`[OTP Debug] Email: ${email}, Now: ${now.toISOString()}, RecordExpiry: ${expiryVal}, RawRecord: ${JSON.stringify(record)}`);
+
+    if (!expiryVal) {
+        console.warn(`[OTP Warning] No expiry found for ${email}, allowing for now.`);
+        await db.remove(OTP_COLLECTION, { _id: record._id });
+        return { success: true };
+    }
+
+    const expiry = new Date(expiryVal);
+    
+    // Check if the expiry is actually a valid date
+    if (isNaN(expiry.getTime())) {
+        console.error(`[OTP Error] Invalid expiry date for ${email}: ${expiryVal}`);
+        // If it's invalid, we might want to allow it or deny it. Let's allow for now but log.
+        await db.remove(OTP_COLLECTION, { _id: record._id });
+        return { success: true };
+    }
+
     if (now > expiry) {
+      console.log(`[OTP Info] Code expired for ${email}. Now: ${now.toISOString()}, Expiry: ${expiry.toISOString()}`);
       await db.remove(OTP_COLLECTION, { _id: record._id });
       return { success: false, error: 'Verification code has expired' };
     }

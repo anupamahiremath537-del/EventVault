@@ -144,7 +144,10 @@ router.post('/', async (req, res) => {
     }
 
     const event = await db.findOne('events', { eventId });
-    if (!event || (event.status && event.status !== 'active')) return res.status(404).json({ error: 'Event not found or inactive' });
+    if (!event) {
+      return res.status(404).json({ error: `Event with ID ${eventId} not found. Please go back to the home page and select a valid event.` });
+    }
+    if (event.status && event.status !== 'active') return res.status(404).json({ error: 'Event is not active.' });
 
     // Restrict Inhouse events to USNs starting with "2LB" or "2lb"
     if (event.scope === 'inhouse') {

@@ -13,8 +13,8 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
 });
 
 const normalizeField = key => {
-  if (key === '_id') return 'id';
-  return key; 
+  if (key === '_id' || key === 'id') return 'id';
+  return key.toLowerCase(); 
 };
 
 const mapRecord = record => {
@@ -99,7 +99,7 @@ const db = {
         continue;
       }
       
-      const field = key === '_id' ? 'id' : key;
+      const field = normalizeField(key);
       if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
         if (value.$ne !== undefined) builder = builder.not(field, 'eq', value.$ne);
         else if (value.$in !== undefined) builder = builder.in(field, value.$in);
@@ -114,7 +114,7 @@ const db = {
     }
 
     for (const [key, direction] of Object.entries(sort)) {
-      builder = builder.order(key === '_id' ? 'id' : key, { ascending: direction !== -1 });
+      builder = builder.order(normalizeField(key), { ascending: direction !== -1 });
     }
 
     const { data, error } = await builder;
@@ -143,15 +143,16 @@ const db = {
 
   async insert(collection, doc) {
     const payload = {};
-    for (const [k, v] of Object.entries(doc)) payload[k] = v;
-    if (payload._id) { payload.id = payload._id; delete payload._id; }
+    for (const [k, v] of Object.entries(doc)) {
+      payload[normalizeField(k)] = v;
+    }
+    
     if (!payload.id) payload.id = uuidv4();
 
     const { data, error } = await supabase.from(collection).insert(payload).select();
     if (error) {
-      const { error: retryError } = await supabase.from(collection).insert(payload);
-      if (retryError) throw retryError;
-      return { ...doc, id: payload.id, _id: payload.id };
+      // Retry logic or throw
+      throw error;
     }
     return mapRecord(data ? data[0] : payload);
   },
@@ -160,7 +161,7 @@ const db = {
     const updateData = update.$set || update;
     const payload = {};
     for (const [k, v] of Object.entries(updateData)) {
-      if (k !== '_id') payload[k] = v;
+      if (k !== '_id' && k !== 'id') payload[normalizeField(k)] = v;
     }
 
     let targetId = query._id || query.id;
