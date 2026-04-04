@@ -33,7 +33,7 @@ const buildQuery = (collection, query = {}) => {
 
     if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
       if (value.$ne !== undefined) {
-        builder = builder.not(`${field}.eq.${value.$ne}`);
+        builder = builder.not(field, 'eq', value.$ne);
       } else if (value.$in !== undefined) {
         builder = builder.in(field, value.$in);
       } else if (value.$gt !== undefined) {
