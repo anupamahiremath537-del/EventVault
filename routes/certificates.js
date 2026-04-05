@@ -138,7 +138,7 @@ router.post('/send', authMiddleware, adminOnly, async (req, res) => {
           }
 
           // Delay to avoid rate limits
-          await new Promise(resolve => setTimeout(resolve, 5000));
+          await new Promise(resolve => setTimeout(resolve, 1000));
         } catch (innerErr) {
           console.error(`[Manual Cert ERROR] Unexpected error for ${cert.email || 'unknown'}:`, innerErr.stack || innerErr.message);
           failCount++;

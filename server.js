@@ -40,9 +40,14 @@ app.use(express.static(path.join(__dirname, 'public')));
   app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
   app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
   app.get('/choice/:eventId', (req, res) => res.sendFile(path.join(__dirname, 'public', 'choice.html')));
+  app.get('/signup', (req, res) => res.sendFile(path.join(__dirname, 'public', 'signup.html')));
   app.get('/signup/:eventId', (req, res) => res.sendFile(path.join(__dirname, 'public', 'signup.html')));
   app.get('/user-login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'user-login.html')));
   app.get('/user-signup', (req, res) => res.sendFile(path.join(__dirname, 'public', 'user-signup.html')));
+  app.get('/events', (req, res) => res.sendFile(path.join(__dirname, 'public', 'events.html')));
+  app.get('/past-events', (req, res) => res.sendFile(path.join(__dirname, 'public', 'past-events.html')));
+  app.get('/supportive-teams', (req, res) => res.sendFile(path.join(__dirname, 'public', 'supportive-teams.html')));
+  app.get('/achievements', (req, res) => res.sendFile(path.join(__dirname, 'public', 'achievements.html')));
 
   // For Google Cloud Run, it's better to always listen on PORT (which defaults to 8080)
   app.listen(PORT, '0.0.0.0', () => {

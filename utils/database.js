@@ -2,10 +2,10 @@ const { createClient } = require('@supabase/supabase-js');
 const { v4: uuidv4 } = require('uuid');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
-  console.error('❌ Supabase configuration is missing. Please set SUPABASE_URL and SUPABASE_SERVICE_KEY in your environment.');
+  console.error('❌ Supabase configuration is missing. Please set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in your environment.');
 }
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
@@ -14,7 +14,12 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
 
 const normalizeField = key => {
   if (key === '_id' || key === 'id') return 'id';
-  return key.toLowerCase(); 
+  const manualMap = {
+    eventId: 'eventid',
+    registrationId: 'registrationid',
+    roleId: 'roleid'
+  };
+  return manualMap[key] || key.toLowerCase(); 
 };
 
 const mapRecord = record => {
@@ -121,9 +126,13 @@ const db = {
     let results = [];
     if (error) {
       if (error.message.includes('column') || error.message.includes('cache')) {
-        const { data: allData, error: allError } = await supabase.from(collection).select('*');
-        if (allError) throw allError;
-        results = allData.map(mapRecord);
+        console.warn(`[DB Warning] Schema cache error detected for ${collection}. Attempting reload...`);
+        await this.refreshSchema();
+        // Wait a bit for reload
+        await new Promise(r => setTimeout(r, 200));
+        const { data: retryData, error: retryError } = await supabase.from(collection).select('*');
+        if (retryError) throw retryError;
+        results = (retryData || []).map(mapRecord);
       } else {
         throw error;
       }
@@ -151,7 +160,13 @@ const db = {
 
     const { data, error } = await supabase.from(collection).insert(payload).select();
     if (error) {
-      // Retry logic or throw
+      if (error.message.includes('column') || error.message.includes('cache')) {
+        await this.refreshSchema();
+        await new Promise(r => setTimeout(r, 200));
+        const { data: retryData, error: retryError } = await supabase.from(collection).insert(payload).select();
+        if (retryError) throw retryError;
+        return mapRecord(retryData ? retryData[0] : payload);
+      }
       throw error;
     }
     return mapRecord(data ? data[0] : payload);
@@ -167,13 +182,27 @@ const db = {
     let targetId = query._id || query.id;
     if (targetId) {
       const { error } = await supabase.from(collection).update(payload).eq('id', targetId);
-      if (error) throw error;
+      if (error) {
+        if (error.message.includes('column') || error.message.includes('cache')) {
+          await this.refreshSchema();
+          await new Promise(r => setTimeout(r, 200));
+          const { error: retryError } = await supabase.from(collection).update(payload).eq('id', targetId);
+          if (retryError) throw retryError;
+          return 1;
+        }
+        throw error;
+      }
       return 1;
     }
 
     const docs = await this.find(collection, query);
     for (const doc of docs) {
-      await supabase.from(collection).update(payload).eq('id', doc._id);
+      const { error } = await supabase.from(collection).update(payload).eq('id', doc._id);
+      if (error && (error.message.includes('column') || error.message.includes('cache'))) {
+         await this.refreshSchema();
+         await new Promise(r => setTimeout(r, 200));
+         await supabase.from(collection).update(payload).eq('id', doc._id);
+      } else if (error) throw error;
     }
     return docs.length;
   },
@@ -182,12 +211,26 @@ const db = {
     let targetId = query._id || query.id;
     if (targetId) {
       const { error } = await supabase.from(collection).delete().eq('id', targetId);
-      if (error) throw error;
+      if (error) {
+         if (error.message.includes('column') || error.message.includes('cache')) {
+            await this.refreshSchema();
+            await new Promise(r => setTimeout(r, 200));
+            const { error: retryError } = await supabase.from(collection).delete().eq('id', targetId);
+            if (retryError) throw retryError;
+            return 1;
+         }
+         throw error;
+      }
       return 1;
     }
     const docs = await this.find(collection, query);
     for (const doc of docs) {
-      await supabase.from(collection).delete().eq('id', doc._id);
+      const { error } = await supabase.from(collection).delete().eq('id', doc._id);
+      if (error && (error.message.includes('column') || error.message.includes('cache'))) {
+         await this.refreshSchema();
+         await new Promise(r => setTimeout(r, 200));
+         await supabase.from(collection).delete().eq('id', doc._id);
+      } else if (error) throw error;
     }
     return docs.length;
   },

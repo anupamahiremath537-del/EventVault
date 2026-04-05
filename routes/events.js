@@ -41,9 +41,23 @@ router.get('/', async (req, res) => {
     // Sort by date ascending
     events.sort((a, b) => new Date(a.date) - new Date(b.date));
 
+    // Optimize: Fetch all registrations for these events in ONE go
+    const eventIds = events.map(e => e.eventId);
+    const allRegs = await db.find('registrations', { 
+      eventId: { $in: eventIds }, 
+      status: { $ne: 'cancelled' } 
+    });
+
+    // Group registrations by eventId for fast lookup
+    const regsByEvent = {};
+    allRegs.forEach(r => {
+      if (!regsByEvent[r.eventId]) regsByEvent[r.eventId] = [];
+      regsByEvent[r.eventId].push(r);
+    });
+
     // Attach slot info
-    const enriched = await Promise.all(events.map(async ev => {
-      const regs = await db.find('registrations', { eventId: ev.eventId, status: { $ne: 'cancelled' } });
+    const enriched = events.map(ev => {
+      const regs = regsByEvent[ev.eventId] || [];
       const volunteerRegs = regs.filter(r => r.type === 'volunteer');
       const participantRegs = regs.filter(r => r.type === 'participant');
       const roles = (ev.volunteerRoles || []).map(role => {
@@ -51,7 +65,7 @@ router.get('/', async (req, res) => {
         return { ...role, filled, remaining: Math.max(0, role.slots - filled) };
       });
       return { ...ev, roles, participantCount: participantRegs.length, volunteerCount: volunteerRegs.length };
-    }));
+    });
     res.json(enriched);
   } catch (err) {
     res.status(500).json({ error: err.message });

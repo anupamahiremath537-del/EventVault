@@ -47,7 +47,7 @@ router.post('/signup', async (req, res) => {
           usn: usn.toUpperCase(),
           phone: phone || '',
           type: type || 'participant',
-          createdAt: new Date().toISOString()
+          createdat: new Date().toISOString()
         }
       ]);
 

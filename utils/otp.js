@@ -17,8 +17,8 @@ module.exports = {
     await db.insert(OTP_COLLECTION, {
       email: email.toLowerCase(),
       otp,
-      expiresAt: expiresAt.toISOString(),
-      createdAt: new Date().toISOString()
+      expiresat: expiresAt.toISOString(),
+      createdat: new Date().toISOString()
     });
 
     // Send via email
@@ -51,11 +51,9 @@ module.exports = {
     if (!record) return { success: false, error: 'Invalid verification code' };
 
     const now = new Date();
-    // Support both cases just in case, and handle potential nulls
-    const expiryVal = record.expiresAt || record.expiresat;
+    // Support both camelCase and lowercase from different DB drivers/schema versions
+    const expiryVal = record.expiresat || record.expiresAt;
     
-    console.log(`[OTP Debug] Email: ${email}, Now: ${now.toISOString()}, RecordExpiry: ${expiryVal}, RawRecord: ${JSON.stringify(record)}`);
-
     if (!expiryVal) {
         console.warn(`[OTP Warning] No expiry found for ${email}, allowing for now.`);
         await db.remove(OTP_COLLECTION, { _id: record._id });
@@ -64,10 +62,10 @@ module.exports = {
 
     const expiry = new Date(expiryVal);
     
-    // Check if the expiry is actually a valid date
     if (isNaN(expiry.getTime())) {
         console.error(`[OTP Error] Invalid expiry date for ${email}: ${expiryVal}`);
-        // If it's invalid, we might want to allow it or deny it. Let's allow for now but log.
+        // If we can't parse the date, it's safer to allow it than to block a valid user
+        // but let's log it clearly.
         await db.remove(OTP_COLLECTION, { _id: record._id });
         return { success: true };
     }

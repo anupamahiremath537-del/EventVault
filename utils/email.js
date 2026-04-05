@@ -1,7 +1,6 @@
 const nodemailer = require('nodemailer');
 
 // Configure SMTP transport
-// These should ideally be in your .env file
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   host: 'smtp.gmail.com',
@@ -12,6 +11,9 @@ const transporter = nodemailer.createTransport({
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
+  pool: true, // Use connection pooling
+  maxConnections: 5,
+  maxMessages: 100
 });
 
 module.exports = {
@@ -38,16 +40,30 @@ module.exports = {
     }
   },
 
-  async sendBroadcast(emails, subject, message) {
+  /**
+   * Sends emails to multiple recipients in parallel with concurrency control
+   */
+  async sendBroadcast(emails, subject, message, html = null, attachments = []) {
     const results = { success: 0, failure: 0 };
-    for (const email of emails) {
-      const res = await this.sendEmail(email, subject, message);
-      if (res.success) results.success++;
-      else results.failure++;
+    const uniqueEmails = [...new Set(emails.filter(e => !!e))];
+    
+    console.log(`[Email Broadcast] Starting for ${uniqueEmails.length} recipients...`);
+    
+    // Chunk size for concurrency control
+    const CHUNK_SIZE = 10;
+    for (let i = 0; i < uniqueEmails.length; i += CHUNK_SIZE) {
+      const chunk = uniqueEmails.slice(i, i + CHUNK_SIZE);
+      const promises = chunk.map(email => this.sendEmail(email, subject, message, html, attachments));
       
-      // Small delay to prevent spam flagging
-      await new Promise(r => setTimeout(r, 500));
+      const chunkResults = await Promise.all(promises);
+      chunkResults.forEach(res => {
+        if (res.success) results.success++;
+        else results.failure++;
+      });
+      
+      console.log(`[Email Broadcast] Processed ${Math.min(i + CHUNK_SIZE, uniqueEmails.length)} / ${uniqueEmails.length}`);
     }
+    
     return results;
   }
 };

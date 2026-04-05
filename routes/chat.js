@@ -24,7 +24,13 @@ router.post('/', async (req, res) => {
 
   try {
     // --- 1. CONTEXT LOADING ---
-    const allEvents = await db.find('events', { status: { $ne: 'deleted' } });
+    // Run initial data fetching in parallel
+    const [allEvents, currentUser, registrations] = await Promise.all([
+      db.find('events', { status: { $ne: 'deleted' } }),
+      email ? db.findOne('registered_users', { email: email.toLowerCase() }) : Promise.resolve(null),
+      email ? db.find('registrations', { email: email.toLowerCase(), status: { $ne: 'cancelled' } }) : Promise.resolve([])
+    ]);
+
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
     
@@ -73,14 +79,6 @@ router.post('/', async (req, res) => {
       } else {
         organizerInfo = { name: mentionedItem.createdBy, email: mentionedItem.createdBy, phone: "+91 6363338238" };
       }
-    }
-
-    // User Data
-    let currentUser = null;
-    let registrations = [];
-    if (email) {
-      currentUser = await db.findOne('registered_users', { email: email.toLowerCase() });
-      registrations = await db.find('registrations', { email: email.toLowerCase(), status: { $ne: 'cancelled' } });
     }
 
     // --- 2. RESPONSE GENERATION ---

@@ -258,7 +258,7 @@ router.patch('/:id/approve', authMiddleware, async (req, res) => {
 
 Best Wishes
 ${organizerDisplayName}`;
-    await emailUtil.sendEmail(reg.email, subject, text);
+    emailUtil.sendEmail(reg.email, subject, text).catch(err => console.error('[Approve Email Error]', err));
 
     res.json({ success: true, message: 'Registration approved' });
   } catch (err) {
@@ -313,6 +313,8 @@ router.patch('/:id/cancel', async (req, res) => {
   }
 });
 
+const otpUtil = require('../utils/otp');
+
 // PATCH /api/registrations/:id/swap-request - Request shift swap or transfer to another person
 router.patch('/:id/swap-request', async (req, res) => {
   try {
@@ -321,12 +323,11 @@ router.patch('/:id/swap-request', async (req, res) => {
     // 1. Verify OTP first (sent to the target person: new if transfer, else requester)
     const targetEmail = (newPersonEmail || email).toLowerCase().trim();
     if (!otp) return res.status(400).json({ error: 'OTP is required' });
-    const otpDoc = await db.findOne('otps', { email: targetEmail, otp });
-    if (!otpDoc || new Date() > new Date(otpDoc.expiresAt)) {
-      return res.status(401).json({ error: 'Invalid or expired OTP' });
+    
+    const otpVerify = await otpUtil.verifyOTP(targetEmail, otp);
+    if (!otpVerify.success) {
+      return res.status(401).json({ error: otpVerify.error || 'Invalid or expired OTP' });
     }
-    // Delete OTP after use
-    await db.remove('otps', { _id: otpDoc._id });
 
     const reg = await db.findOne('registrations', { registrationId: req.params.id });
     if (!reg) return res.status(404).json({ error: 'Registration not found' });
@@ -404,7 +405,7 @@ router.patch('/:id/swap-approve', authMiddleware, async (req, res) => {
       ? `Dear ${updateData.name},\n\nYour swap/transfer request has been successfully approved for the event "${event.title}". You have replaced ${oldName} for the role: ${newRole.name}.\n\nBest regards,\nBGMIT Event Team`
       : `Dear ${reg.name},\n\nYour role swap request for "${event.title}" has been approved. Your new role is: ${newRole.name}.\n\nBest regards,\nBGMIT Event Team`;
     
-    await emailUtil.sendEmail(targetEmail, subject, text);
+    emailUtil.sendEmail(targetEmail, subject, text).catch(err => console.error('[Swap Email Error]', err));
 
     res.json({ success: true, message: isTransfer ? 'Transfer approved' : 'Swap request approved' });
   } catch (err) {
@@ -650,7 +651,7 @@ router.post('/broadcast-certificates', authMiddleware, async (req, res) => {
           }
 
           // Small delay between sends
-          await new Promise(r => setTimeout(r, 5000));
+          await new Promise(r => setTimeout(r, 1000));
         } catch (err) {
           console.error(`[Cert Broadcast Error] User ${reg.email} for event ${event.title}:`, err.stack || err.message);
           failCount++;
@@ -728,11 +729,18 @@ router.get('/swap-requests', authMiddleware, async (req, res) => {
     }
 
     const regs = await db.find('registrations', query, { swapRequestedAt: -1 });
-    const enriched = await Promise.all(regs.map(async r => {
-      const event = await db.findOne('events', { eventId: r.eventId });
+
+    // Optimize: Fetch all relevant events in ONE go
+    const eventIds = [...new Set(regs.map(r => r.eventId))];
+    const events = await db.find('events', { eventId: { $in: eventIds } });
+    const eventMap = {};
+    events.forEach(e => eventMap[e.eventId] = e);
+
+    const enriched = regs.map(r => {
+      const event = eventMap[r.eventId];
       const newRole = (event?.volunteerRoles || []).find(rl => rl.id === r.swapRequestedRoleId);
       return { ...r, eventTitle: event?.title, requestedRoleName: newRole?.name };
-    }));
+    });
     res.json(enriched);
   } catch (err) {
     res.status(500).json({ error: err.message });
