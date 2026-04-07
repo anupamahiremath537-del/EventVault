@@ -36,18 +36,18 @@ router.post('/', async (req, res) => {
     
     // Categorize events (excluding supportive teams from general lists)
     const upcomingEvents = allEvents
-      .filter(e => !e.isSupportiveTeam && new Date(e.date).setHours(23,59,59,999) >= now)
+      .filter(e => (e.isSupportiveTeam !== true && e.isSupportiveTeam !== 'true') && new Date(e.date).setHours(23,59,59,999) >= now)
       .sort((a, b) => new Date(a.date) - new Date(b.date))
       .slice(0, 15);
-      
+
     const pastEvents = allEvents
-      .filter(e => !e.isSupportiveTeam && new Date(e.date).setHours(23,59,59,999) < now)
-      .sort((a, b) => new Date(b.date) - new Date(a.date))
+      .filter(e => (e.isSupportiveTeam !== true && e.isSupportiveTeam !== 'true') && new Date(e.date).setHours(23,59,59,999) < now)
+      .sort((a, b) => new Date(a.date) - new Date(b.date))
       .slice(0, 10);
 
-    const todayEvents = allEvents.filter(e => !e.isSupportiveTeam && e.date === todayStr);
+    const todayEvents = allEvents.filter(e => (e.isSupportiveTeam !== true && e.isSupportiveTeam !== 'true') && e.date === todayStr);
 
-    const supportiveTeams = allEvents.filter(e => e.isSupportiveTeam === true);
+    const supportiveTeams = allEvents.filter(e => e.isSupportiveTeam === true || e.isSupportiveTeam === 'true');
 
     // Identify if a specific item (Event or Supportive Team) is mentioned
     let mentionedItem = null;

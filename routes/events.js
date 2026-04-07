@@ -28,9 +28,9 @@ router.get('/', async (req, res) => {
 
     // Filter by supportive team status
     if (req.query.isSupportiveTeam === 'true') {
-      events = events.filter(e => e.isSupportiveTeam === true);
+      events = events.filter(e => e.isSupportiveTeam === true || e.isSupportiveTeam === 'true');
     } else if (req.query.isSupportiveTeam === 'false') {
-      events = events.filter(e => e.isSupportiveTeam !== true);
+      events = events.filter(e => e.isSupportiveTeam !== true && e.isSupportiveTeam !== 'true');
     }
     
     if (user && user.role === 'organizer') {
@@ -148,12 +148,14 @@ router.post('/', authMiddleware, async (req, res) => {
 
     const roles = (volunteerRoles || []).map(r => ({ ...r, id: r.id || uuidv4() }));
 
+    const isSupTeam = isSupportiveTeam === true || isSupportiveTeam === 'true';
+
     const event = await db.insert('events', {
       eventId, title, date, time, endTime: endTime || '', location, description: description || '',
       participantLimit: parseInt(participantLimit) || 100,
       volunteerRoles: roles, category: category || 'General',
       scope: scope || 'inhouse',
-      isSupportiveTeam: isSupportiveTeam === true,
+      isSupportiveTeam: isSupTeam,
       teamMode: teamMode || 'individual',
       teamSize: teamMode === 'team' ? (parseInt(teamSize) || 0) : 0,
       signupUrl, status: 'active',
@@ -180,6 +182,9 @@ router.put('/:eventId', authMiddleware, async (req, res) => {
     const { title, date, time, endTime, location, description, participantLimit, volunteerRoles, category, teamSize, teamMode, scope, status, isSupportiveTeam } = req.body;
     const roles = (volunteerRoles || []).map(r => ({ ...r, id: r.id || uuidv4() }));
     const targetId = event.eventId || req.params.eventId;
+    
+    const isSupTeam = isSupportiveTeam === true || isSupportiveTeam === 'true';
+
     await db.update('events', { eventId: targetId }, { $set: { 
       title, 
       date, 
@@ -191,7 +196,7 @@ router.put('/:eventId', authMiddleware, async (req, res) => {
       volunteerRoles: roles, 
       category, 
       scope: scope || 'inhouse', 
-      isSupportiveTeam: isSupportiveTeam === true,
+      isSupportiveTeam: isSupTeam,
       teamMode: teamMode || 'individual', 
       teamSize: teamMode === 'team' ? (parseInt(teamSize) || 0) : 0, 
       status: status || 'active', 

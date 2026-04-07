@@ -72,11 +72,18 @@ const mapRecord = record => {
   const mapped = {};
   for (const [key, value] of Object.entries(record)) {
     const appKey = fieldMap[key.toLowerCase()] || key;
+    let finalValue = value;
+    
+    // Normalize boolean-like values for known boolean fields
+    if (['isSupportiveTeam', 'checkedIn', 'noShow', 'swapRequested'].includes(appKey)) {
+      finalValue = (value === true || value === 'true');
+    }
+
     if (appKey.toLowerCase() === 'id') {
-      mapped._id = value;
-      mapped.id = value;
+      mapped._id = finalValue;
+      mapped.id = finalValue;
     } else {
-      mapped[appKey] = value;
+      mapped[appKey] = finalValue;
     }
   }
   return mapped;
