@@ -1,18 +1,18 @@
 const router = require('express').Router();
 const db = require('../utils/database');
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+const Anthropic = require('@anthropic-ai/sdk');
 
-// --- GEMINI SETUP ---
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-let genAI = null;
-let model = null;
+// --- ANTHROPIC SETUP ---
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+let anthropic = null;
 
-if (GEMINI_API_KEY) {
-  console.log('✅ Gemini API Key detected. Initializing...');
-  genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-  model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+if (ANTHROPIC_API_KEY) {
+  console.log('✅ Anthropic API Key detected. Initializing Claude...');
+  anthropic = new Anthropic({
+    apiKey: ANTHROPIC_API_KEY,
+  });
 } else {
-  console.error('❌ GEMINI_API_KEY is missing from environment variables!');
+  console.error('❌ ANTHROPIC_API_KEY is missing from environment variables!');
 }
 
 router.post('/', async (req, res) => {
@@ -124,8 +124,8 @@ router.post('/', async (req, res) => {
         }
     }
 
-    // FALLBACK TO GEMINI (Primary NLP engine)
-    if (!reply && model) {
+    // FALLBACK TO CLAUDE (Primary NLP engine)
+    if (!reply && anthropic) {
       try {
         const context = `
 You are "EventVault AI", the official assistant for BGMIT's Event Management System.
@@ -168,15 +168,18 @@ INSTRUCTIONS:
 
 User: "${message}"
 `;
-        const result = await model.generateContent(context);
-        const response = await result.response;
-        reply = response.text();
-      } catch (geminiErr) {
-        console.error('[Gemini Error Detail]', geminiErr);
-        // If Gemini fails, we leave reply empty to trigger the fallback message below
+        const result = await anthropic.messages.create({
+          model: "claude-3-5-sonnet-20240620",
+          max_tokens: 1024,
+          messages: [{ role: "user", content: context }],
+        });
+        reply = result.content[0].text;
+      } catch (claudeErr) {
+        console.error('[Claude Error Detail]', claudeErr);
+        // If Claude fails, we leave reply empty to trigger the fallback message below
       }
-    } else if (!reply && !model) {
-      console.warn('[Chat Warning] Gemini model not initialized - skipping AI generation');
+    } else if (!reply && !anthropic) {
+      console.warn('[Chat Warning] Claude not initialized - skipping AI generation');
     }
 
     // LAST RESORT FALLBACK

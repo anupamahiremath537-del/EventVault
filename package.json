@@ -19,7 +19,7 @@
     "node": "20"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.24.1",
+    "@anthropic-ai/sdk": "^0.82.0",
     "@supabase/supabase-js": "^2.35.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
