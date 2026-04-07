@@ -3,10 +3,12 @@ const { createClient } = require('@supabase/supabase-js');
 
 async function test() {
   const SUPABASE_URL = process.env.SUPABASE_URL;
+  const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
   console.log('URL:', SUPABASE_URL);
-  console.log('Key length:', SUPABASE_SERVICE_KEY ? SUPABASE_SERVICE_KEY.length : 0);
+  console.log('SUPABASE_SERVICE_ROLE_KEY length:', SUPABASE_SERVICE_ROLE_KEY ? SUPABASE_SERVICE_ROLE_KEY.length : 'N/A');
+  console.log('SUPABASE_SERVICE_KEY length:', SUPABASE_SERVICE_KEY ? SUPABASE_SERVICE_KEY.length : 'N/A');
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
