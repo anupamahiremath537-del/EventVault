@@ -259,7 +259,7 @@ router.post('/organizers/:username/approve', require('../middleware/auth'), asyn
 
     // Send approval email to the organizer
     const appName = process.env.EMAIL_FROM_NAME || 'EventVault';
-    const loginUrl = `${process.env.APP_URL || 'http://localhost:3000'}/admin`;
+    const loginUrl = `${process.env.APP_URL || 'https://siddhisopanam-bgmit.onrender.com'}/admin`;
     
     const subject = `Account Approved: Welcome to ${appName}`;
     const text = `Hello ${user.name},\n\nGreat news! Your organizer account for EventVault has been approved by the administrator.\n\nYou can now log in to your dashboard to create and manage events.\n\nLogin here: ${loginUrl}\n\nBest regards,\nThe EventVault Team`;

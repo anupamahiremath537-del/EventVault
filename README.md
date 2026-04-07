@@ -11,13 +11,13 @@ npm install
 # Start the server
 npm start
 
-# Server runs at: http://localhost:3000
+# Server runs at: https://siddhisopanam-bgmit.onrender.com
 ```
 
 ## 🔐 Admin Credentials
 Admin credentials and Firebase configuration are managed via environment variables and the `firebase-service-account.json` file. 
 
-- **URL**: `http://localhost:3000/admin`
+- **URL**: `https://siddhisopanam-bgmit.onrender.com/admin`
 - **Default (if not set)**: `admin` / `ViratAbd$&1718`
 
 See `.env` for:

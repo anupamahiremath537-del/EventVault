@@ -143,7 +143,7 @@ router.post('/', authMiddleware, async (req, res) => {
     if (!title || !date || !time || !location) return res.status(400).json({ error: 'Title, date, time, location are required' });
 
     const eventId = uuidv4();
-    const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
+    const baseUrl = process.env.BASE_URL || 'https://siddhisopanam-bgmit.onrender.com';
     const signupUrl = `${baseUrl}/signup/${eventId}`;
 
     const roles = (volunteerRoles || []).map(r => ({ ...r, id: r.id || uuidv4() }));

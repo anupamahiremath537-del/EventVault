@@ -7,7 +7,7 @@ async function fix() {
     const events = await db.find('events', {});
     console.log(`Found ${events.length} events.`);
 
-    const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3001}`;
+    const baseUrl = process.env.BASE_URL || 'https://siddhisopanam-bgmit.onrender.com';
 
     for (const event of events) {
       if (!event.eventId) {

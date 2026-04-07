@@ -76,49 +76,9 @@ header {
 .empty-state { text-align:center; padding:80px 20px; grid-column: 1 / -1; }
 .empty-icon { font-size:64px; margin-bottom:16px; opacity: 0.5; }
 
-@media (max-width: 768px) {
-  header {
-    padding: 0 15px;
-  }
-  
-  .header-inner {
-    flex-direction: column;
-    height: auto;
-    padding: 10px 0;
-    gap: 12px;
-  }
-  
-  .container {
-    padding: 24px 16px;
-  }
-  
-  .section-title {
-    font-size: 24px;
-    text-align: center;
-    width: 100%;
-  }
-  
-  .filters {
-    justify-content: center;
-    gap: 10px;
-    margin-bottom: 24px;
-  }
-  
-  .filter-chip {
-    padding: 8px 20px;
-    font-size: 13px;
-    flex: 1;
-    text-align: center;
-  }
-  
-  .events-grid {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
-  
-  .event-card-top {
-    padding: 20px;
-  }
+@media(max-width:768px) {
+  header, .container { padding:0 20px; }
+  .section-title { font-size: 24px; }
 }
 </style>
 </head>
