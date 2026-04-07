@@ -42,12 +42,14 @@ router.post('/', async (req, res) => {
 
     const pastEvents = allEvents
       .filter(e => (e.isSupportiveTeam !== true && e.isSupportiveTeam !== 'true') && new Date(e.date).setHours(23,59,59,999) < now)
-      .sort((a, b) => new Date(a.date) - new Date(b.date))
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
       .slice(0, 10);
 
     const todayEvents = allEvents.filter(e => (e.isSupportiveTeam !== true && e.isSupportiveTeam !== 'true') && e.date === todayStr);
 
     const supportiveTeams = allEvents.filter(e => e.isSupportiveTeam === true || e.isSupportiveTeam === 'true');
+
+    console.log(`[Chat Debug] Found ${upcomingEvents.length} upcoming, ${pastEvents.length} past, ${supportiveTeams.length} teams.`);
 
     // Identify if a specific item (Event or Supportive Team) is mentioned
     let mentionedItem = null;
@@ -108,6 +110,9 @@ router.post('/', async (req, res) => {
     else if (input.includes('contact') || input.includes('technical support') || (input.includes('help') && !input.includes('event'))) {
       reply = "For technical issues, contact the admin at <b>bgmitcs034@gmail.com</b> (Contact: +91 6363338238) or visit the CSE Department.";
     }
+    else if (input.includes('register') || input.includes('sign up') || input.includes('signup') || input.includes('how to join')) {
+      reply = "To <b>Register</b> for an event:<br>1. Click the green <b>Upcoming Events</b> button on the home page.<br>2. Select your desired event.<br>3. Click <b>Register Now</b> and follow the steps (requires email OTP).";
+    }
 
     // FALLBACK TO GEMINI (Primary NLP engine)
     if (!reply && model) {
@@ -157,10 +162,11 @@ User: "${message}"
         const response = await result.response;
         reply = response.text();
       } catch (geminiErr) {
-        console.error('[Gemini Error]', geminiErr.message || geminiErr);
-        // If Gemini fails (404, 429, 500), we just don't set a reply here
-        // and let the "LAST RESORT FALLBACK" handle it gracefully.
+        console.error('[Gemini Error Detail]', geminiErr);
+        // If Gemini fails, we leave reply empty to trigger the fallback message below
       }
+    } else if (!reply && !model) {
+      console.warn('[Chat Warning] Gemini model not initialized - skipping AI generation');
     }
 
     // LAST RESORT FALLBACK
