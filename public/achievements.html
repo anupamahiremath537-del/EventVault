@@ -108,10 +108,79 @@ header {
 .empty-state { text-align:center; padding:80px 20px; color:var(--text2); }
 .empty-icon { font-size:64px; margin-bottom:16px; }
 
-@media(max-width:768px) {
-  header { padding:0 20px; }
-  .container { padding:20px; }
-  .results-grid { grid-template-columns: 1fr; }
+@media (max-width: 768px) {
+  header {
+    padding: 0 15px;
+  }
+  
+  .header-inner {
+    flex-direction: column;
+    height: auto;
+    padding: 10px 0;
+    gap: 12px;
+  }
+  
+  .hero {
+    padding: 40px 20px;
+  }
+  
+  .hero h1 {
+    font-size: 28px;
+  }
+  
+  .hero p {
+    font-size: 14px;
+  }
+  
+  .container {
+    padding: 24px 16px;
+  }
+  
+  .section-title {
+    font-size: 22px;
+  }
+  
+  .results-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .result-header {
+    padding: 20px;
+  }
+  
+  .result-body {
+    padding: 20px;
+  }
+  
+  .cat-nav {
+    gap: 8px;
+    justify-content: flex-start;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    white-space: nowrap;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .cat-nav::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .cat-link {
+    padding: 6px 16px;
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+  
+  .winner-row {
+    padding: 10px;
+    gap: 12px;
+  }
+  
+  .winner-name {
+    font-size: 14px;
+  }
 }
 </style>
 </head>

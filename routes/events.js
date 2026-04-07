@@ -41,8 +41,12 @@ router.get('/', async (req, res) => {
     // Sort by date ascending
     events.sort((a, b) => new Date(a.date) - new Date(b.date));
 
+    if (events.length === 0) {
+      return res.json([]);
+    }
+
     // Optimize: Fetch all registrations for these events in ONE go
-    const eventIds = events.map(e => e.eventId);
+    const eventIds = events.map(e => e.eventId || e.id).filter(id => id);
     const allRegs = await db.find('registrations', { 
       eventId: { $in: eventIds }, 
       status: { $ne: 'cancelled' } 
@@ -68,6 +72,7 @@ router.get('/', async (req, res) => {
     });
     res.json(enriched);
   } catch (err) {
+    console.error('❌ [EVENTS API ERROR]', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -231,6 +236,7 @@ router.get('/:eventId/registrations', authMiddleware, async (req, res) => {
       .sort((a, b) => new Date(b.registeredAt) - new Date(a.registeredAt));
     res.json(enriched);
   } catch (err) {
+    console.error('❌ [EVENTS API ERROR]', err);
     res.status(500).json({ error: err.message });
   }
 });

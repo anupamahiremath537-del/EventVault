@@ -33,6 +33,12 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/certificates', certificateRoutes);
 app.use('/api/chat', chatRoutes);
 
+// Error Handling Middleware
+app.use((err, req, res, next) => {
+  console.error('❌ [API ERROR]', err.stack);
+  res.status(500).json({ error: 'Internal Server Error', details: err.message });
+});
+
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
   

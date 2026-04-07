@@ -37,7 +37,16 @@ router.get('/csv', authMiddleware, async (req, res) => {
     
     if (req.user.role === 'organizer') {
       const myEvents = await db.find('events', { createdBy: req.user.username });
-      const myEventIds = myEvents.map(e => e.eventId);
+      const myEventIds = myEvents.map(e => e.eventId).filter(id => id);
+      if (myEventIds.length === 0) {
+        // Handle CSV output for empty events
+        if (req.path.includes('/csv')) {
+           res.setHeader('Content-Type', 'text/csv');
+           res.setHeader('Content-Disposition', 'attachment; filename="registrations.csv"');
+           return res.send('No registrations found');
+        }
+        return res.json([]);
+      }
       query.eventId = { $in: myEventIds };
     } else if (organizer) {
       const orgEvents = await db.find('events', { createdBy: organizer });
@@ -548,7 +557,16 @@ router.post('/broadcast-certificates', authMiddleware, async (req, res) => {
     
     if (req.user.role === 'organizer') {
       const myEvents = await db.find('events', { createdBy: req.user.username });
-      const myEventIds = myEvents.map(e => e.eventId);
+      const myEventIds = myEvents.map(e => e.eventId).filter(id => id);
+      if (myEventIds.length === 0) {
+        // Handle CSV output for empty events
+        if (req.path.includes('/csv')) {
+           res.setHeader('Content-Type', 'text/csv');
+           res.setHeader('Content-Disposition', 'attachment; filename="registrations.csv"');
+           return res.send('No registrations found');
+        }
+        return res.json([]);
+      }
       query.eventId = { $in: myEventIds };
       if (eventId && myEventIds.includes(eventId)) {
         query.eventId = eventId;
@@ -674,7 +692,16 @@ router.get('/all', authMiddleware, async (req, res) => {
     // If organizer, restrict to their events
     if (req.user.role === 'organizer') {
       const myEvents = await db.find('events', { createdBy: req.user.username });
-      const myEventIds = myEvents.map(e => e.eventId);
+      const myEventIds = myEvents.map(e => e.eventId).filter(id => id);
+      if (myEventIds.length === 0) {
+        // Handle CSV output for empty events
+        if (req.path.includes('/csv')) {
+           res.setHeader('Content-Type', 'text/csv');
+           res.setHeader('Content-Disposition', 'attachment; filename="registrations.csv"');
+           return res.send('No registrations found');
+        }
+        return res.json([]);
+      }
       query.eventId = { $in: myEventIds };
     } else if (organizer) {
       // Admin filtering by organizer
@@ -724,7 +751,16 @@ router.get('/swap-requests', authMiddleware, async (req, res) => {
     let query = { swapRequested: true };
     if (req.user.role === 'organizer') {
       const myEvents = await db.find('events', { createdBy: req.user.username });
-      const myEventIds = myEvents.map(e => e.eventId);
+      const myEventIds = myEvents.map(e => e.eventId).filter(id => id);
+      if (myEventIds.length === 0) {
+        // Handle CSV output for empty events
+        if (req.path.includes('/csv')) {
+           res.setHeader('Content-Type', 'text/csv');
+           res.setHeader('Content-Disposition', 'attachment; filename="registrations.csv"');
+           return res.send('No registrations found');
+        }
+        return res.json([]);
+      }
       query.eventId = { $in: myEventIds };
     }
 

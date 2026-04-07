@@ -3,8 +3,13 @@ const emailUtil = require('../utils/email');
 
 async function test() {
   console.log('--- Email Diagnostic ---');
-  console.log('USER:', process.env.EMAIL_USER);
-  console.log('PASS:', process.env.EMAIL_PASS ? '******** (set)' : '(not set)');
+  console.log('USER (Sender):', process.env.EMAIL_USER || 'bgmitcs034@gmail.com (default)');
+  console.log('BREVO_API_KEY:', process.env.BREVO_API_KEY ? '******** (set)' : '(NOT SET)');
+  
+  if (!process.env.BREVO_API_KEY) {
+    console.error('❌ ERROR: BREVO_API_KEY is missing from .env');
+    return;
+  }
   
   const testEmail = 'kedardhayapule32@gmail.com';
   console.log(`Sending test email to: ${testEmail}...`);

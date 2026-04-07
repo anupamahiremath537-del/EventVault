@@ -14,9 +14,17 @@ async function test() {
   const { data, error } = await supabase.from('events').select('count', { count: 'exact', head: true });
 
   if (error) {
-    console.error('Connection error:', error.message);
+    console.error('Connection error (events):', error.message);
   } else {
     console.log('Connection successful! Row count in events:', data);
+  }
+
+  console.log('Testing registrations connection...');
+  const { data: regData, error: regError } = await supabase.from('registrations').select('count', { count: 'exact', head: true });
+  if (regError) {
+    console.error('Connection error (registrations):', regError.message);
+  } else {
+    console.log('Connection successful! Row count in registrations:', regData);
   }
 
   console.log('Testing exec_sql...');

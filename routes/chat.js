@@ -54,7 +54,7 @@ router.post('/', async (req, res) => {
     const allItems = [...allEvents];
     const sortedForMatching = allItems.sort((a, b) => b.title.length - a.title.length);
     for (const item of sortedForMatching) {
-      const escapedTitle = item.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const escapedTitle = (item.title || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const regex = new RegExp(`\\b${escapedTitle}\\b`, 'i');
       if (regex.test(input)) {
         mentionedItem = item;
@@ -99,7 +99,7 @@ router.post('/', async (req, res) => {
     else if (input.includes('supportive team') || (input.includes('supportive') && input.includes('team'))) {
       if (supportiveTeams.length > 0) {
         reply = "We have the following <b>Supportive Teams</b> you can join:<br>" + 
-                supportiveTeams.map(t => `- <b>${t.title}</b> (Handling by: ${t.createdBy.replace('admin@eventvault.org', 'bgmitcs034@gmail.com')})`).join('<br>') +
+                supportiveTeams.map(t => `- <b>${t.title}</b> (Handling by: ${(t.createdBy || 'bgmitcs034@gmail.com').replace('admin@eventvault.org', 'bgmitcs034@gmail.com')})`).join('<br>') +
                 "<br>Click the blue <b>Supportive Teams</b> button on the home page to join!";
       } else {
         reply = "There are currently no active <b>Supportive Teams</b>. Check back later!";
@@ -120,15 +120,15 @@ UPCOMING EVENTS:
 ${upcomingEvents.length > 0 ? upcomingEvents.map(e => `- ${e.title}: ${e.date} at ${e.time}, Venue: ${e.location}, Cat: ${e.category}, Mode: ${e.teamMode}`).join('\n') : 'No upcoming events.'}
 
 SUPPORTIVE TEAMS (Volunteering groups):
-${supportiveTeams.length > 0 ? supportiveTeams.map(t => `- ${t.title}: Venue: ${t.location}, Role: ${t.volunteerRoles ? t.volunteerRoles.map(r=>r.name).join(', ') : 'Volunteer'}, Handling by: ${t.createdBy.replace('admin@eventvault.org', 'bgmitcs034@gmail.com')}, Description: ${t.description}`).join('\n') : 'No active supportive teams.'}
+${supportiveTeams.length > 0 ? supportiveTeams.map(t => `- ${t.title}: Venue: ${t.location}, Role: ${Array.isArray(t.volunteerRoles) ? t.volunteerRoles.map(r => r.name || 'Volunteer').join(', ') : 'Volunteer'}, Handling by: ${(t.createdBy || 'bgmitcs034@gmail.com').replace('admin@eventvault.org', 'bgmitcs034@gmail.com')}, Description: ${t.description || 'N/A'}`).join('\n') : 'No active supportive teams.'}
 
 PAST EVENTS:
 ${pastEvents.length > 0 ? pastEvents.map(e => `- ${e.title}: held on ${e.date}`).join('\n') : 'No past event records.'}
 
 ${mentionedItem ? `USER IS ASKING ABOUT: ${mentionedItem.title}
 - Type: ${mentionedItem.isSupportiveTeam ? 'Supportive Team' : 'General Event'}
-- Handling/Organizer: ${organizerInfo.name} (${organizerInfo.email.replace('admin@eventvault.org', 'bgmitcs034@gmail.com')})
-- Contact: ${organizerInfo.phone}
+- Handling/Organizer: ${organizerInfo.name} (${(organizerInfo.email || 'bgmitcs034@gmail.com').replace('admin@eventvault.org', 'bgmitcs034@gmail.com')})
+- Contact: ${organizerInfo.phone || "+91 6363338238"}
 - Details: ${mentionedItem.description || 'N/A'}
 - Registration Type: ${mentionedItem.isSupportiveTeam ? 'Supportive Team Join' : 'Event Registration'}` : ''}
 
@@ -148,7 +148,7 @@ INSTRUCTIONS:
 - Use <br> for lines.
 - Always provide specific details from the lists above.
 - If asking for registration for a supportive team, specify the "Supportive Teams" button.
-- If asking for organizer/faculty/handling, provide: ${organizerInfo.name} (${organizerInfo.email}, Contact: ${organizerInfo.phone}).
+- If asking for organizer/faculty/handling, provide: ${organizerInfo.name} (${organizerInfo.email || 'bgmitcs034@gmail.com'}, Contact: ${organizerInfo.phone || "+91 6363338238"}).
 - If asked about "supportive teams" generally, list them and mention they are handled by their respective creators.
 
 User: "${message}"
@@ -157,14 +157,15 @@ User: "${message}"
         const response = await result.response;
         reply = response.text();
       } catch (geminiErr) {
-        console.error('Gemini error:', geminiErr);
-        reply = "I'm having trouble connecting to my brain! Please try again or contact <b>bgmitcs034@gmail.com</b>.";
+        console.error('[Gemini Error]', geminiErr.message || geminiErr);
+        // If Gemini fails (404, 429, 500), we just don't set a reply here
+        // and let the "LAST RESORT FALLBACK" handle it gracefully.
       }
     }
 
     // LAST RESORT FALLBACK
     if (!reply) {
-      reply = "I'm sorry, I didn't quite catch that. I can help with event info, registration, certificates, and more. Could you please rephrase your question?";
+      reply = "I'm sorry, I'm having a bit of trouble processing that right now. I can help with event info, registration, certificates, and more. Could you please rephrase your question or contact <b>bgmitcs034@gmail.com</b>?";
     }
 
   } catch (err) {

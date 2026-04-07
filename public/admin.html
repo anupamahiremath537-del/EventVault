@@ -359,6 +359,11 @@ tr:hover td { background:rgba(108,99,255,0.03); }
 ::-webkit-scrollbar-track { background:transparent; }
 ::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
 
+/* DATETIME FLEXIBILITY */
+.datetime-row { grid-template-columns: 1fr !important; gap: 0 !important; }
+.time-input-group { display: flex !important; gap: 8px !important; flex-wrap: wrap; }
+.time-input-group input, .time-input-group select { flex: 1; min-width: 70px; }
+
 /* RESPONSIVE */
 @media (max-width:768px) {
   .sidebar { transform:translateX(-100%); transition:transform 0.3s cubic-bezier(0.4,0,0.2,1); }
@@ -984,14 +989,14 @@ input[type="time"]::-webkit-calendar-picker-indicator {
           </select>
         </div>
       </div>
-      <div class="form-row" id="group-datetime">
+      <div class="form-row datetime-row" id="group-datetime">
         <div class="form-group"><label>Date *</label><input type="date" id="ev-date"></div>
         <div class="form-group">
           <label>Start Time *</label>
-          <div style="display:flex;gap:4px">
-            <input type="number" id="ev-time-h" min="1" max="12" placeholder="HH" style="flex:1; width:60px" oninput="if(this.value.length > 2) this.value = this.value.slice(0, 2); if(this.value > 12) this.value = 12;">
-            <input type="number" id="ev-time-m" min="0" max="59" placeholder="MM" style="flex:1; width:60px" oninput="if(this.value.length > 2) this.value = this.value.slice(0, 2); if(this.value > 59) this.value = 59;">
-            <select id="ev-time-ampm" style="flex:1">
+          <div class="time-input-group">
+            <input type="number" id="ev-time-h" min="1" max="12" placeholder="HH" oninput="if(this.value.length > 2) this.value = this.value.slice(0, 2); if(this.value > 12) this.value = 12;">
+            <input type="number" id="ev-time-m" min="0" max="59" placeholder="MM" oninput="if(this.value.length > 2) this.value = this.value.slice(0, 2); if(this.value > 59) this.value = 59;">
+            <select id="ev-time-ampm">
               <option value="AM">AM</option>
               <option value="PM">PM</option>
             </select>
@@ -999,10 +1004,10 @@ input[type="time"]::-webkit-calendar-picker-indicator {
         </div>
         <div class="form-group">
           <label>End Time (Optional)</label>
-          <div style="display:flex;gap:4px">
-            <input type="number" id="ev-endtime-h" min="1" max="12" placeholder="HH" style="flex:1; width:60px" oninput="if(this.value.length > 2) this.value = this.value.slice(0, 2); if(this.value > 12) this.value = 12;">
-            <input type="number" id="ev-endtime-m" min="0" max="59" placeholder="MM" style="flex:1; width:60px" oninput="if(this.value.length > 2) this.value = this.value.slice(0, 2); if(this.value > 59) this.value = 59;">
-            <select id="ev-endtime-ampm" style="flex:1">
+          <div class="time-input-group">
+            <input type="number" id="ev-endtime-h" min="1" max="12" placeholder="HH" oninput="if(this.value.length > 2) this.value = this.value.slice(0, 2); if(this.value > 12) this.value = 12;">
+            <input type="number" id="ev-endtime-m" min="0" max="59" placeholder="MM" oninput="if(this.value.length > 2) this.value = this.value.slice(0, 2); if(this.value > 59) this.value = 59;">
+            <select id="ev-endtime-ampm">
               <option value="AM">AM</option>
               <option value="PM">PM</option>
             </select>
@@ -1835,7 +1840,7 @@ function openCreateModal() {
   document.getElementById('group-category').style.display = 'block';
   document.getElementById('group-scope').style.display = 'block';
   document.getElementById('group-type').style.display = 'block';
-  document.getElementById('group-datetime').style.display = 'flex';
+  document.getElementById('group-datetime').style.display = 'grid';
   
   document.getElementById('ev-title').value = '';
   document.getElementById('ev-category').value = '';
@@ -1906,7 +1911,7 @@ function openEditModal(ev) {
     document.getElementById('group-category').style.display = 'block';
     document.getElementById('group-scope').style.display = 'block';
     document.getElementById('group-type').style.display = 'block';
-    document.getElementById('group-datetime').style.display = 'flex';
+    document.getElementById('group-datetime').style.display = 'grid';
   }
 
   document.getElementById('ev-title').value = ev.title;

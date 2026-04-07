@@ -98,10 +98,63 @@ header {
 .spinner { display:inline-block; width:14px; height:14px; border:2px solid rgba(255,255,255,0.4); border-top-color:#fff; border-radius:50%; animation:spin 0.7s linear infinite; }
 @keyframes spin { to { transform:rotate(360deg); } }
 
-@media(max-width:768px) {
-  header { padding:0 16px; }
-  .container { padding: 20px 16px; }
-  .teams-grid { grid-template-columns: 1fr; }
+@media (max-width: 768px) {
+  header {
+    padding: 0 15px;
+  }
+  
+  .header-inner {
+    flex-direction: column;
+    height: auto;
+    padding: 10px 0;
+    gap: 12px;
+  }
+  
+  .container {
+    padding: 24px 16px;
+  }
+  
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  .section-title {
+    font-size: 24px;
+  }
+  
+  .teams-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .team-card-top {
+    padding: 20px;
+  }
+  
+  .modal {
+    width: 95%;
+    max-height: 85vh;
+    border-radius: 16px;
+  }
+  
+  .modal-hero {
+    padding: 24px;
+  }
+  
+  .modal-hero h2 {
+    font-size: 20px;
+  }
+  
+  .modal-body {
+    padding: 20px;
+  }
+  
+  .form-group input, .form-group select {
+    font-size: 14px;
+    padding: 10px 12px;
+  }
 }
 </style>
 </head>
