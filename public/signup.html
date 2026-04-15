@@ -192,7 +192,7 @@ body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-
 </div>
 
 <script>
-const eventId = location.pathname.split('/signup/')[1];
+const eventId = new URLSearchParams(window.location.search).get('id');
 let selectedType = 'volunteer', selectedRoleId = null, eventData = null;
 
 async function init() {

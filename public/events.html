@@ -262,7 +262,7 @@ function renderEvents() {
     const regBtnStyle = isClosed ? 'background:#6b7280; opacity:0.8; cursor:not-allowed;' : '';
 
     return `
-    <div class="event-card" ${isClosed ? '' : `onclick="window.location.href='/choice/${ev.eventId}'"`} style="--bg-img: url('${eventImg}'); ${isClosed ? 'cursor:default;' : ''}">
+    <div class="event-card" ${isClosed ? '' : `onclick="window.location.href='/choice.html?id=${ev.eventId}'"`} style="--bg-img: url('${eventImg}'); ${isClosed ? 'cursor:default;' : ''}">
       <div class="event-card-top">
         <div class="event-card-cat">${ev.category || 'General'}</div>
         <h3>${ev.title}</h3>

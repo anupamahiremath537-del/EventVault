@@ -89,9 +89,13 @@ body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-
 </div>
 
 <script>
-const eventId = location.pathname.split('/choice/')[1];
+const eventId = new URLSearchParams(window.location.search).get('id');
 
 async function init() {
+  if (!eventId) {
+    document.getElementById('hero-title').textContent = 'Event not specified';
+    return;
+  }
   try {
     const r = await fetch(`/api/events/${eventId}`);
     if (!r.ok) {
@@ -120,8 +124,8 @@ async function init() {
         </div>
       `;
     } else {
-      document.getElementById('volunteer-link').href = `/signup/${eventId}?type=volunteer`;
-      document.getElementById('participant-link').href = `/signup/${eventId}?type=participant`;
+      document.getElementById('volunteer-link').href = `/signup.html?id=${eventId}&type=volunteer`;
+      document.getElementById('participant-link').href = `/signup.html?id=${eventId}&type=participant`;
     }
   } catch(e) {
     document.getElementById('hero-title').textContent = 'Event not found';
