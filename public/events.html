@@ -257,8 +257,12 @@ function renderEvents() {
     if (daysUntil <= 3) daysBadge = `<span class="event-days-badge days-soon">🔥 In ${daysUntil}d</span>`;
     else daysBadge = `<span class="event-days-badge days-upcoming">In ${daysUntil} days</span>`;
 
+    const isClosed = ev.registrationStatus === 'closed';
+    const regBtnText = isClosed ? '🔒 Registration Closed' : 'Register Now →';
+    const regBtnStyle = isClosed ? 'background:#6b7280; opacity:0.8; cursor:not-allowed;' : '';
+
     return `
-    <div class="event-card" onclick="window.location.href='/choice/${ev.eventId}'" style="--bg-img: url('${eventImg}')">
+    <div class="event-card" ${isClosed ? '' : `onclick="window.location.href='/choice/${ev.eventId}'"`} style="--bg-img: url('${eventImg}'); ${isClosed ? 'cursor:default;' : ''}">
       <div class="event-card-top">
         <div class="event-card-cat">${ev.category || 'General'}</div>
         <h3>${ev.title}</h3>
@@ -267,10 +271,10 @@ function renderEvents() {
           <div class="event-meta-item"><span>🕐</span>${ev.time}</div>
           <div class="event-meta-item"><span>📍</span>${ev.location}</div>
         </div>
-        <button class="btn btn-primary" style="width:100%; justify-content:center;">Register Now →</button>
+        <button class="btn btn-primary" style="width:100%; justify-content:center; ${regBtnStyle}" ${isClosed ? 'disabled' : ''}>${regBtnText}</button>
       </div>
       <div class="event-card-bottom">
-        <div class="slots-count">${(ev.roles || []).reduce((s, r) => s + (r.slots - r.filled), 0)} slots open</div>
+        <div class="slots-count">${isClosed ? '0 slots available' : (ev.roles || []).reduce((s, r) => s + (r.slots - r.filled), 0) + ' slots open'}</div>
         ${daysBadge}
       </div>
     </div>`;

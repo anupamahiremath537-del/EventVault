@@ -111,8 +111,18 @@ async function init() {
     document.getElementById('hero-date').textContent = new Date(ev.date).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     document.getElementById('hero-loc').textContent = ev.location;
     
-    document.getElementById('volunteer-link').href = `/signup/${eventId}?type=volunteer`;
-    document.getElementById('participant-link').href = `/signup/${eventId}?type=participant`;
+    if (ev.registrationStatus === 'closed') {
+      document.querySelector('.card h2').textContent = 'Registrations Closed';
+      const btns = document.querySelector('.choice-btns');
+      btns.innerHTML = `
+        <div style="padding: 30px; background: #fff1f2; border: 1px solid #fecaca; border-radius: 20px; color: #b91c1c; font-weight: 700;">
+          ⚠ Registrations for this event are currently closed. Please check other events or contact the organizer.
+        </div>
+      `;
+    } else {
+      document.getElementById('volunteer-link').href = `/signup/${eventId}?type=volunteer`;
+      document.getElementById('participant-link').href = `/signup/${eventId}?type=participant`;
+    }
   } catch(e) {
     document.getElementById('hero-title').textContent = 'Event not found';
   }

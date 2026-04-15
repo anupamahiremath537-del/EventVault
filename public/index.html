@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google-site-verification" content="qw-O8WAKFZGzSMPe4hyzS2DkMo_OwJVwLf_zH9sOxEY" />
 <title>EventVault — Events & Volunteering</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,300;0,400;0,600;0,700;0,800;1,400&family=Space+Mono:wght@400;700&family=Fraunces:ital,wght@0,700;1,400&display=swap" rel="stylesheet">
@@ -342,19 +343,32 @@ header.scrolled { padding: 0 20px; box-shadow: var(--shadow); }
 
 /* BRANDING CONTAINER */
 .brand-container {
-  background: var(--surface); padding: 16px 24px; border-radius: 24px; border: 1px solid var(--border);
-  margin-bottom: 24px; display: flex; align-items: center; gap: 24px;
-  justify-content: center; box-shadow: 0 8px 32px rgba(0,0,0,0.05);
+  background: #ffffff; padding: 20px 32px; border-radius: 40px; border: 1px solid rgba(0,0,0,0.05);
+  margin-bottom: 32px; display: flex; align-items: center; gap: 32px;
+  justify-content: center; box-shadow: 0 15px 45px rgba(0,0,0,0.06);
   transition: all 0.4s var(--ease);
+  max-width: 95%; margin-left: auto; margin-right: auto;
 }
-.brand-container:hover { transform: scale(1.01); box-shadow: 0 12px 40px rgba(0,0,0,0.08); }
+.brand-container:hover { transform: translateY(-3px); box-shadow: 0 20px 60px rgba(0,0,0,0.1); }
 .brand-logo {
-  height: 64px; width: 64px; object-fit: contain; background: var(--surface); border-radius: 50%;
-  padding: 5px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); flex-shrink: 0;
+  height: 72px; width: 72px; object-fit: contain; 
+  flex-shrink: 0;
   transition: transform 0.5s var(--ease);
-}.brand-details h1 { font-size: 22px; line-height: 1.3; margin: 0; }
+}
+.brand-details { flex-grow: 1; text-align: center; }
+.brand-top { 
+  font-size: 15px; font-weight: 800; color: #b71c1c; margin-bottom: 4px; 
+  font-family: 'Nunito', sans-serif; letter-spacing: 0.2px; 
+  opacity: 0; animation: fadeIn 0.8s var(--ease) forwards; 
+}
+.brand-details h1 { 
+  font-size: 20px; line-height: 1.2; margin: 0; color: #1a1a1a; 
+  font-family: 'Nunito', sans-serif; font-weight: 900;
+  opacity: 0; animation: slideUp 0.8s var(--ease) 0.2s forwards;
+  text-transform: uppercase;
+}
 .title-line-1, .title-line-2 { display: block; }
-.title-line-3 { display: block; font-size: 15px; margin-top: 2px; opacity: 0.9; }
+.title-line-3 { display: block; font-size: 14px; margin-top: 4px; font-weight: 800; color: #333; }
 /* Rotation removed */
 
 .tagline-highlight {
@@ -467,8 +481,8 @@ header.scrolled { padding: 0 20px; box-shadow: var(--shadow); }
     <div class="brand-container">
       <img src="https://tse3.mm.bing.net/th/id/OIP.fk1L_h3DZYDECKtbpWf3gAAAAA?rs=1&pid=ImgDetMain&o=7&rm=3" alt="Logo Left" class="brand-logo">
       <div class="brand-details">
-        <div class="brand-top" style="color: var(--brand-red); font-weight: 700;">B.V.V. Sangha's</div>
-        <h1 style="margin: 0; font-weight: 800; color: var(--text); line-height: 1.3; text-align: center;">
+        <div class="brand-top">B.V.V. Sangha's</div>
+        <h1>
           <span class="title-line-1">BILURU GURUBASAVA MAHASWAMIJI</span>
           <span class="title-line-2">INSTITUTE OF TECHNOLOGY</span>
           <span class="title-line-3">MUDHOL-587 313</span>
@@ -894,15 +908,22 @@ async function openSignup(eventId) {
     document.getElementById('signup-otp-container').style.display = 'none';
     document.getElementById('signup-btn-text').textContent = 'Send Verification Code';
     
+    // Check if registration is closed
+    if (ev.registrationStatus === 'closed') {
+      document.getElementById('signup-main-btn').disabled = true;
+      document.getElementById('signup-main-btn').style.opacity = '0.5';
+      document.getElementById('signup-main-btn').style.cursor = 'not-allowed';
+      document.getElementById('signup-error').textContent = '⚠ Registrations for this event are currently closed.';
+      document.getElementById('signup-btn-text').textContent = 'Registrations Closed';
+    } else {
+      document.getElementById('signup-main-btn').disabled = false;
+      document.getElementById('signup-main-btn').style.opacity = '1';
+      document.getElementById('signup-main-btn').style.cursor = 'pointer';
+      document.getElementById('signup-error').textContent = '';
+      document.getElementById('signup-btn-text').textContent = 'Send Verification Code';
+    }
+
     selectedType = 'volunteer'; selectedRoleId = null;
-    document.getElementById('modal-event-id').value = eventId;
-    document.getElementById('modal-event-name').textContent = ev.title;
-    document.getElementById('modal-cat-badge').textContent = ev.category || 'General';
-    document.getElementById('modal-date').textContent = new Date(ev.date).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-    document.getElementById('modal-time').textContent = ev.time;
-    document.getElementById('modal-location').textContent = ev.location;
-    document.getElementById('modal-desc').textContent = ev.description || '';
-    document.getElementById('signup-error').textContent = '';
     
     // Reset Photo
     signupPhotoBase64 = null;

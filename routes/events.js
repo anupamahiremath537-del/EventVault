@@ -159,9 +159,28 @@ router.post('/', authMiddleware, async (req, res) => {
       teamMode: teamMode || 'individual',
       teamSize: teamMode === 'team' ? (parseInt(teamSize) || 0) : 0,
       signupUrl, status: 'active',
+      registrationStatus: 'open',
       createdAt: new Date(), createdBy: req.user.username,
     });
     res.status(201).json(event);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/events/:eventId/toggle-registration - Admin/Organizer: toggle open/closed
+router.patch('/:eventId/toggle-registration', authMiddleware, async (req, res) => {
+  try {
+    const event = await db.findOne('events', { eventId: req.params.eventId });
+    if (!event) return res.status(404).json({ error: 'Event not found' });
+
+    if (req.user.role === 'organizer' && event.createdBy !== req.user.username) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const newStatus = event.registrationStatus === 'closed' ? 'open' : 'closed';
+    await db.update('events', { eventId: req.params.eventId }, { $set: { registrationStatus: newStatus, updatedAt: new Date() } });
+    res.json({ success: true, registrationStatus: newStatus });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

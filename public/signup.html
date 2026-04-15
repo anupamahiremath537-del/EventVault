@@ -219,6 +219,19 @@ async function init() {
       document.getElementById('hero-desc').textContent = ev.description;
       document.getElementById('desc-card').style.display = '';
     }
+
+    if (ev.registrationStatus === 'closed') {
+      const card = document.querySelector('.card h2').parentElement;
+      card.innerHTML = `
+        <h2 style="color: #b91c1c;">Registrations Closed</h2>
+        <div style="padding: 20px; background: #fff1f2; border: 1px solid #fecaca; border-radius: 12px; color: #b91c1c; font-weight: 700; margin-bottom: 20px;">
+          ⚠ Registrations for this event are currently closed.
+        </div>
+        <a href="/events.html" class="btn btn-primary" style="text-decoration: none;">Browse Other Events</a>
+      `;
+      return;
+    }
+
     renderRoles(ev.roles || []);
     
     // Check for type query param
