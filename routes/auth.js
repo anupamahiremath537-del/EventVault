@@ -43,7 +43,7 @@ router.post('/verify-otp', async (req, res) => {
     const { email, otp } = req.body;
     console.log(`[OTP Verify] Attempt for ${email} with OTP: ${otp}`);
     if (!email || !otp) return res.status(400).json({ error: 'Email and OTP required' });
-    const result = await otpUtil.verifyOTP(email, otp);
+    const result = await otpUtil.verifyOTP(email, otp, false);
     if (result.success) {
       console.log(`[OTP Verify] Success for ${email}`);
       res.json({ success: true });

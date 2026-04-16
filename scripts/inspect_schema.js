@@ -12,11 +12,12 @@ async function inspect() {
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-  console.log('Inspecting columns of "otps" table...');
+  console.log('Inspecting columns of all tables in public schema...');
   const sql = `
-    SELECT column_name, data_type 
+    SELECT table_name, column_name, data_type 
     FROM information_schema.columns 
-    WHERE table_name = 'otps';
+    WHERE table_schema = 'public'
+    ORDER BY table_name, ordinal_position;
   `;
 
   const { data, error } = await supabase.rpc('exec_sql', { sql });
@@ -24,22 +25,13 @@ async function inspect() {
   if (error) {
     console.error('Error inspecting schema:', error.message);
   } else {
-    console.log('Columns in "events":');
-    console.log(JSON.stringify(data, null, 2));
-  }
-  
-  console.log('Inspecting other tables...');
-  const sql2 = `
-    SELECT table_name 
-    FROM information_schema.tables 
-    WHERE table_schema = 'public';
-  `;
-  const { data: tables, error: tablesError } = await supabase.rpc('exec_sql', { sql: sql2 });
-  if (tablesError) {
-     console.error('Error listing tables:', tablesError.message);
-  } else {
-     console.log('Tables in public schema:');
-     console.log(JSON.stringify(tables, null, 2));
+    console.log('Schema Information:');
+    const tables = {};
+    data.forEach(row => {
+        if (!tables[row.table_name]) tables[row.table_name] = [];
+        tables[row.table_name].push({ column: row.column_name, type: row.data_type });
+    });
+    console.log(JSON.stringify(tables, null, 2));
   }
 }
 

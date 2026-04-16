@@ -104,17 +104,24 @@ async function importCollection(supabase, collectionName, docs) {
   let successCount = 0;
   for (const doc of docs) {
     try {
+      // Normalize keys to lowercase to match Supabase schema
+      const normalizedDoc = {};
+      for (const [key, value] of Object.entries(doc)) {
+        if (key === '_id') normalizedDoc.id = value;
+        else normalizedDoc[key.toLowerCase()] = value;
+      }
+
       const { error } = await supabase
         .from(collectionName)
-        .insert([doc], { returning: 'minimal' });
+        .insert([normalizedDoc], { returning: 'minimal' });
 
       if (error) {
         if (error.code === '23505' || error.message.includes('duplicate')) {
           // Try delete and re-insert
-          await supabase.from(collectionName).delete().eq('id', doc.id);
-          await supabase.from(collectionName).insert([doc], { returning: 'minimal' });
+          await supabase.from(collectionName).delete().eq('id', normalizedDoc.id);
+          await supabase.from(collectionName).insert([normalizedDoc], { returning: 'minimal' });
         } else {
-          console.warn(`    Warning: ${doc.id} - ${error.message}`);
+          console.warn(`    Warning: ${normalizedDoc.id} - ${error.message}`);
         }
       }
       successCount++;
@@ -147,12 +154,12 @@ async function run() {
   }
 
   const action = process.argv[2] || 'export';
-  const firebaseConfig = loadFirebaseServiceAccount();
-  admin.initializeApp({ credential: admin.credential.cert(firebaseConfig) });
-  const firestore = admin.firestore();
-  const supabase = createSupabaseClient();
+  const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
   if (action === 'export') {
+    const firebaseConfig = loadFirebaseServiceAccount();
+    admin.initializeApp({ credential: admin.credential.cert(firebaseConfig) });
+    const firestore = admin.firestore();
     await exportAll(firestore);
     console.log('\nExport complete. JSON files are in firestore-export/.');
     return;
@@ -176,6 +183,9 @@ async function run() {
   }
 
   if (action === 'both') {
+    const firebaseConfig = loadFirebaseServiceAccount();
+    admin.initializeApp({ credential: admin.credential.cert(firebaseConfig) });
+    const firestore = admin.firestore();
     const exports = await exportAll(firestore);
     await importAll(supabase, exports);
     console.log('\nExport + import complete.');

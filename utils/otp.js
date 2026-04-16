@@ -42,7 +42,7 @@ module.exports = {
     }
   },
 
-  async verifyOTP(email, otp) {
+  async verifyOTP(email, otp, remove = true) {
     const record = await db.findOne(OTP_COLLECTION, { 
       email: email.toLowerCase(), 
       otp: otp.toString() 
@@ -58,7 +58,7 @@ module.exports = {
 
     if (!expiryVal) {
         console.warn(`[OTP Warning] No expiry found for ${email}, allowing for now.`);
-        await db.remove(OTP_COLLECTION, { _id: record._id });
+        if (remove) await db.remove(OTP_COLLECTION, { _id: record._id });
         return { success: true };
     }
 
@@ -67,7 +67,7 @@ module.exports = {
     if (isNaN(expiry.getTime()) || expiry.getTime() === 0) {
         console.error(`[OTP Error] Invalid expiry date for ${email}: ${expiryVal}`);
         // If we can't parse the date, it's safer to allow it than to block a valid user
-        await db.remove(OTP_COLLECTION, { _id: record._id });
+        if (remove) await db.remove(OTP_COLLECTION, { _id: record._id });
         return { success: true };
     }
 
@@ -77,8 +77,10 @@ module.exports = {
       return { success: false, error: 'Verification code has expired' };
     }
 
-    // Success - remove the OTP so it can't be used again
-    await db.remove(OTP_COLLECTION, { _id: record._id });
+    // Success - remove the OTP only if requested
+    if (remove) {
+      await db.remove(OTP_COLLECTION, { _id: record._id });
+    }
     return { success: true };
   }
 };
