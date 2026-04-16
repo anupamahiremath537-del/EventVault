@@ -19,7 +19,9 @@ router.get('/', async (req, res) => {
     }
 
     // Fetch all non-deleted events and handle filtering/sorting in JS to avoid index issues
+    console.log('[Events API] Fetching events...');
     let events = await db.find('events', { status: { $ne: 'deleted' } });
+    console.log(`[Events API] Found ${events.length} events.`);
     
     // Filter by results status if requested
     if (req.query.hasResults === 'true') {
@@ -47,10 +49,12 @@ router.get('/', async (req, res) => {
 
     // Optimize: Fetch all registrations for these events in ONE go
     const eventIds = events.map(e => e.eventId || e.id).filter(id => id);
+    console.log('[Events API] Fetching registrations for eventIds:', eventIds);
     const allRegs = await db.find('registrations', { 
       eventId: { $in: eventIds }, 
       status: { $ne: 'cancelled' } 
     });
+    console.log(`[Events API] Found ${allRegs.length} registrations.`);
 
     // Group registrations by eventId for fast lookup
     const regsByEvent = {};
@@ -60,6 +64,7 @@ router.get('/', async (req, res) => {
     });
 
     // Attach slot info
+    console.log('[Events API] Enriching events with registration counts...');
     const enriched = events.map(ev => {
       const regs = regsByEvent[ev.eventId] || [];
       const volunteerRegs = regs.filter(r => r.type === 'volunteer');

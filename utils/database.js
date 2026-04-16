@@ -66,7 +66,12 @@ const mapRecord = record => {
     expiresat: 'expiresAt',
     secretcode: 'secretCode',
     displayname: 'displayName',
-    photourl: 'photoURL'
+    photourl: 'photoURL',
+    registrationstatus: 'registrationStatus',
+    isoutside: 'isOutside',
+    venue: 'venue',
+    image: 'image',
+    ispast: 'isPast'
   };
 
   const mapped = {};
@@ -132,6 +137,7 @@ const db = {
     const { data, error } = await builder;
     let results = [];
     if (error) {
+      console.error(`❌ [DB Error] collection=${collection} error=${error.message} code=${error.code}`);
       if (error.message.includes('column') || error.message.includes('cache')) {
         console.warn(`[DB Warning] Schema cache error detected for ${collection}. Attempting reload...`);
         await this.refreshSchema();
