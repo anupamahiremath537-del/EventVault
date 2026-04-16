@@ -6,6 +6,7 @@ const authMiddleware = require('../middleware/auth');
 
 // GET /api/events - List events (filtered for organizers)
 router.get('/', async (req, res) => {
+  console.log(`\n🔍 [Events API] Request received: ${req.method} ${req.url}`);
   try {
     const jwt = require('jsonwebtoken');
     const JWT_SECRET = process.env.JWT_SECRET || 'eventvault_secret_2024';
@@ -15,59 +16,72 @@ router.get('/', async (req, res) => {
       try {
         const token = auth.split(' ')[1];
         user = jwt.verify(token, JWT_SECRET);
-      } catch (e) { /* ignore */ }
+        console.log(`[Events API] Authenticated user: ${user.username} (${user.role})`);
+      } catch (e) { 
+        console.log('[Events API] Auth token provided but invalid.');
+      }
     }
 
-    // Fetch all non-deleted events and handle filtering/sorting in JS to avoid index issues
-    console.log('[Events API] Fetching events...');
+    console.log('[Events API] Step 1: Fetching events from DB...');
     let rawEvents = await db.find('events', { status: { $ne: 'deleted' } });
+    if (!Array.isArray(rawEvents)) {
+      console.error('[Events API] DB returned non-array for events:', typeof rawEvents);
+      rawEvents = [];
+    }
     let events = rawEvents.filter(e => e !== null);
-    console.log(`[Events API] Found ${events.length} valid events (out of ${rawEvents.length} raw).`);
+    console.log(`[Events API] Step 1 Complete: Found ${events.length} valid events.`);
     
-    // Filter by results status if requested
     if (req.query.hasResults === 'true') {
-      console.log('[Events API] Filtering by hasResults...');
+      console.log('[Events API] Step 2: Filtering by hasResults...');
       events = events.filter(e => e.results && typeof e.results === 'object' && Object.keys(e.results).length > 0);
     }
 
-    // Filter by supportive team status
     if (req.query.isSupportiveTeam === 'true') {
-      console.log('[Events API] Filtering by isSupportiveTeam=true...');
+      console.log('[Events API] Step 3a: Filtering by isSupportiveTeam=true...');
       events = events.filter(e => e.isSupportiveTeam === true || e.isSupportiveTeam === 'true');
     } else if (req.query.isSupportiveTeam === 'false') {
-      console.log('[Events API] Filtering by isSupportiveTeam=false...');
+      console.log('[Events API] Step 3b: Filtering by isSupportiveTeam=false...');
       events = events.filter(e => e.isSupportiveTeam !== true && e.isSupportiveTeam !== 'true');
     }
     
     if (user && user.role === 'organizer') {
-      console.log(`[Events API] Filtering for organizer: ${user.username}`);
+      console.log(`[Events API] Step 4: Filtering for organizer: ${user.username}`);
       events = events.filter(e => e.createdBy === user.username);
     }
 
-    // Sort by date ascending
-    console.log('[Events API] Sorting events...');
+    console.log('[Events API] Step 5: Sorting events...');
     events.sort((a, b) => {
-      const da = a.date ? new Date(a.date) : new Date(0);
-      const db = b.date ? new Date(b.date) : new Date(0);
-      return da - db;
+      try {
+        const da = a.date ? new Date(a.date) : new Date(0);
+        const db = b.date ? new Date(b.date) : new Date(0);
+        return da - db;
+      } catch (e) { return 0; }
     });
 
     if (events.length === 0) {
-      console.log('[Events API] No events after filtering.');
+      console.log('[Events API] Step 6: No events after filtering. Returning [].');
       return res.json([]);
     }
 
-    // Optimize: Fetch all registrations for these events in ONE go
     const eventIds = events.map(e => e.eventId || e.id).filter(id => id);
-    console.log('[Events API] Fetching registrations for eventIds count:', eventIds.length);
-    const rawAllRegs = await db.find('registrations', { 
-      eventId: { $in: eventIds }, 
-      status: { $ne: 'cancelled' } 
-    });
-    const allRegs = rawAllRegs.filter(r => r !== null);
-    console.log(`[Events API] Found ${allRegs.length} valid registrations.`);
+    console.log(`[Events API] Step 7: Fetching registrations for ${eventIds.length} eventIds...`);
+    
+    let rawAllRegs = [];
+    try {
+      rawAllRegs = await db.find('registrations', { 
+        eventId: { $in: eventIds }, 
+        status: { $ne: 'cancelled' } 
+      });
+    } catch (dbErr) {
+      console.error('[Events API] Registration fetch failed:', dbErr.message);
+      // Continue without registration data rather than 500ing
+      rawAllRegs = [];
+    }
+    
+    const allRegs = Array.isArray(rawAllRegs) ? rawAllRegs.filter(r => r !== null) : [];
+    console.log(`[Events API] Step 7 Complete: Found ${allRegs.length} valid registrations.`);
 
-    // Group registrations by eventId for fast lookup
+    console.log('[Events API] Step 8: Grouping registrations...');
     const regsByEvent = {};
     allRegs.forEach(r => {
       const eid = r.eventId;
@@ -77,22 +91,37 @@ router.get('/', async (req, res) => {
       }
     });
 
-    // Attach slot info
-    console.log('[Events API] Enriching events with registration counts...');
+    console.log('[Events API] Step 9: Enriching events with registration counts...');
     const enriched = events.map(ev => {
-      const regs = regsByEvent[ev.eventId] || regsByEvent[ev.id] || [];
-      const volunteerRegs = regs.filter(r => r.type === 'volunteer');
-      const participantRegs = regs.filter(r => r.type === 'participant');
-      const roles = (ev.volunteerRoles || []).map(role => {
-        const filled = volunteerRegs.filter(r => r.roleId === role.id).length;
-        return { ...role, filled, remaining: Math.max(0, role.slots - filled) };
-      });
-      return { ...ev, roles, participantCount: participantRegs.length, volunteerCount: volunteerRegs.length };
+      try {
+        const regs = regsByEvent[ev.eventId] || regsByEvent[ev.id] || [];
+        const volunteerRegs = regs.filter(r => r.type === 'volunteer');
+        const participantRegs = regs.filter(r => r.type === 'participant');
+        
+        const roles = (Array.isArray(ev.volunteerRoles) ? ev.volunteerRoles : []).map(role => {
+          if (!role) return null;
+          const filled = volunteerRegs.filter(r => r.roleId === role.id).length;
+          const slots = parseInt(role.slots) || 0;
+          return { ...role, filled, remaining: Math.max(0, slots - filled) };
+        }).filter(r => r !== null);
+
+        return { 
+          ...ev, 
+          roles, 
+          participantCount: participantRegs.length, 
+          volunteerCount: volunteerRegs.length 
+        };
+      } catch (mapErr) {
+        console.error(`[Events API] Error enriching event ${ev.eventId || ev.id}:`, mapErr.message);
+        return ev; // Return unenriched event rather than crashing
+      }
     });
+
+    console.log('[Events API] Final Step: Sending JSON response.');
     res.json(enriched);
   } catch (err) {
-    console.error('❌ [EVENTS API ERROR]', err);
-    res.status(500).json({ error: err.message });
+    console.error('❌ [EVENTS API ERROR STACK]', err.stack);
+    res.status(500).json({ error: 'Internal Server Error', message: err.message });
   }
 });
 
