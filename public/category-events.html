@@ -96,11 +96,6 @@ header {
     <h1 class="section-title"><span id="category-name">Category</span> <em>Events</em></h1>
   </div>
 
-  <div class="filters">
-    <button class="filter-chip active" onclick="setScope('inhouse', this)">Inhouse</button>
-    <button class="filter-chip" onclick="setScope('outhouse', this)">Outhouse</button>
-  </div>
-
   <div class="events-grid" id="events-grid">
     <!-- Events will be loaded here -->
   </div>
@@ -110,7 +105,7 @@ header {
 const API = '/api';
 const params = new URLSearchParams(window.location.search);
 const category = params.get('cat') || 'General';
-let currentScope = 'inhouse'; // Default to inhouse
+let currentScope = 'inhouse'; // Always inhouse
 let allEvents = [];
 
 document.getElementById('category-name').textContent = category;
@@ -119,23 +114,15 @@ async function loadEvents() {
   try {
     const r = await fetch(API + '/events');
     allEvents = await r.json();
-    if (currentScope) renderEvents();
+    renderEvents();
   } catch(e) { console.error(e); }
 }
 
-function setScope(scope, el) {
-  currentScope = scope;
-  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
-  el.classList.add('active');
-  renderEvents();
-}
-
 function renderEvents() {
-  if (!currentScope) return;
   const now = new Date();
   const list = allEvents.filter(e => 
     (e.category || '').toLowerCase() === category.toLowerCase() && 
-    (e.scope || 'inhouse') === currentScope &&
+    (e.scope || 'inhouse') === 'inhouse' &&
     new Date(e.date).setHours(23, 59, 59, 999) >= now
   );
 
@@ -143,8 +130,8 @@ function renderEvents() {
   if (!list.length) {
     grid.innerHTML = `<div class="empty-state">
       <div class="empty-icon">📅</div>
-      <div style="font-size:18px; font-weight:600;">No ${currentScope} events found for ${category}</div>
-      <p style="color:var(--text2); margin-top:8px;">Check back later or try the other category!</p>
+      <div style="font-size:18px; font-weight:600;">No events found for ${category}</div>
+      <p style="color:var(--text2); margin-top:8px;">Check back later!</p>
     </div>`;
     return;
   }
