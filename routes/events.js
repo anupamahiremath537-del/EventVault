@@ -190,8 +190,8 @@ router.post('/', authMiddleware, async (req, res) => {
       return res.status(403).json({ error: 'Your account is pending approval. You cannot create events yet.' });
     }
 
-    const { title, date, time, endTime, location, description, participantLimit, volunteerRoles, category, teamSize, teamMode, scope, isSupportiveTeam } = req.body;
-    console.log('[Events API] Received body:', { title, date, category });
+    const { title, date, time, endTime, location, description, participantLimit, volunteerRoles, category, teamSize, teamMode, scope, isSupportiveTeam, registrationDeadline } = req.body;
+    console.log('[Events API] Received body:', { title, date, category, registrationDeadline });
     
     if (!title || !date || !time || !location) {
       console.log('[Events API] Validation failed: missing required fields.');
@@ -215,6 +215,7 @@ router.post('/', authMiddleware, async (req, res) => {
       teamSize: teamMode === 'team' ? (parseInt(teamSize) || 0) : 0,
       signupUrl, status: 'active',
       registrationStatus: 'open',
+      registrationDeadline: registrationDeadline || null,
       createdAt: new Date(), createdBy: req.user.username,
     };
 
@@ -266,7 +267,7 @@ router.put('/:eventId', authMiddleware, async (req, res) => {
       if (event.createdBy !== req.user.username) return res.status(403).json({ error: 'Access denied' });
     }
 
-    const { title, date, time, endTime, location, description, participantLimit, volunteerRoles, category, teamSize, teamMode, scope, status, isSupportiveTeam } = req.body;
+    const { title, date, time, endTime, location, description, participantLimit, volunteerRoles, category, teamSize, teamMode, scope, status, isSupportiveTeam, registrationDeadline } = req.body;
     const roles = (volunteerRoles || []).map(r => ({ ...r, id: r.id || uuidv4() }));
     const targetId = event.eventId || req.params.eventId;
     
@@ -287,6 +288,7 @@ router.put('/:eventId', authMiddleware, async (req, res) => {
       teamMode: teamMode || 'individual', 
       teamSize: teamMode === 'team' ? (parseInt(teamSize) || 0) : 0, 
       status: status || 'active', 
+      registrationDeadline: registrationDeadline || null,
       updatedAt: new Date() 
     } });
     const updated = await db.findOne('events', { eventId: targetId });

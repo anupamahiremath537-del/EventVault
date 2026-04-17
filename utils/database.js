@@ -68,6 +68,7 @@ const mapRecord = record => {
     displayname: 'displayName',
     photourl: 'photoURL',
     registrationstatus: 'registrationStatus',
+    registrationdeadline: 'registrationDeadline',
     isoutside: 'isOutside',
     venue: 'venue',
     image: 'image',

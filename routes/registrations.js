@@ -163,6 +163,14 @@ router.post('/', async (req, res) => {
       return res.status(403).json({ error: 'Registrations for this event are currently closed.' });
     }
 
+    // Check if deadline has passed
+    if (event.registrationDeadline) {
+      const deadline = new Date(event.registrationDeadline);
+      if (new Date() > deadline) {
+        return res.status(403).json({ error: `Registrations for ${event.title} closed on ${deadline.toLocaleString('en-IN')}.` });
+      }
+    }
+
     // Restrict Inhouse events to USNs starting with "2LB" or "2lb"
     if (event.scope === 'inhouse') {
       if (!usn || !usn.toLowerCase().startsWith('2lb')) {
