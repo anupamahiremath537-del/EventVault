@@ -348,10 +348,10 @@ router.get('/:eventId/registrations/csv', authMiddleware, async (req, res) => {
     const { teamName, type } = req.query;
     const query = { eventId: req.params.eventId, status: { $ne: 'cancelled' } };
     const regs = await db.find('registrations', query, { registeredAt: 1 });
-    const rows = [['Name', 'Email', 'USN', 'Phone', 'Type', 'Role / Event', 'Team Name', 'Status', 'Registered At', 'Check-in']];
+    const rows = [['Name', 'Email', 'USN', 'Phone', 'Type', 'Role', 'Team Name', 'Status', 'Registered At', 'Check-in']];
     regs.forEach(r => {
-      const roleOrEvent = r.type === 'volunteer' ? (r.roleName || '') : (event?.title || '');
-      rows.push([r.name, r.email, r.usn || '', r.phone || '', r.type, roleOrEvent, r.teamName || '', r.status, new Date(r.registeredAt).toLocaleString(), r.checkedIn ? 'Yes' : 'No']);
+      const roleInfo = r.type === 'volunteer' ? (r.roleName || 'Volunteer') : '';
+      rows.push([r.name, r.email, r.usn || '', r.phone || '', r.type, roleInfo, r.teamName || '', r.status, new Date(r.registeredAt).toLocaleString(), r.checkedIn ? 'Yes' : 'No']);
     });
     stringify(rows, (err, output) => {
       let filename = `${event?.title || 'event'}-registrations`;

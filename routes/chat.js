@@ -109,7 +109,7 @@ router.post('/', async (req, res) => {
       reply = "For technical issues, contact the admin at <b>bgmitcs034@gmail.com</b> (Contact: +91 6363338238) or visit the CSE Department.";
     }
     else if (input.includes('register') || input.includes('sign up') || input.includes('signup') || input.includes('how to join') || input.includes('registration')) {
-      reply = "To <b>Register</b> for an event:<br>1. Click the green <b>Upcoming Events</b> button on the home page.<br>2. Select your desired event.<br>3. Click <b>Register Now</b> and follow the steps (requires email OTP).";
+      reply = "To <b>Register</b> for an event:<br>1. Click the green <b>Register for Events</b> button on the home page.<br>2. Select your desired event.<br>3. Click <b>Register Now</b> and follow the steps (requires email OTP).";
     }
     else if (input.includes('swap') || input.includes('transfer')) {
       reply = "To <b>Swap</b> or <b>Transfer</b> your registration:<br>1. Click the <b>My Sign Ups of Events</b> button on the home page.<br>2. Enter your registered email and click <b>View My Sign Ups</b>.<br>3. Find your event and click the <b>Transfer / Swap</b> button.<br>4. Fill in the details (new person's info) and verify with OTP.";
@@ -155,8 +155,8 @@ USER PROFILE:
 - Registrations: ${registrations.length > 0 ? registrations.map(r => r.eventId).join(', ') : 'None'}
 
 PLATFORM NAVIGATION & RULES:
-1. Register for Events: Click "Upcoming Events" (green button) -> "Register Now". Requires Email OTP.
-2. Join Supportive Teams: Click "Supportive Teams" (blue outline button) -> "Join Team". Requires Email OTP.
+1. Register for Events: Click "Register for Events" (green button) -> "Register Now". Requires Email OTP.
+2. Join Supportive Teams: Click "Register for Supportive Teams" (blue outline button) -> "Join Team". Requires Email OTP.
 3. Swap/Transfer Registration: Click "My Sign Ups of Events" (blue button in hero) -> "View My Sign Ups" -> "Transfer / Swap". Requires OTP for the new person.
 4. Certificates: Sent to your REGISTERED EMAIL only after event completion. NOT downloadable.
 5. Team Events: Leader creates team (name/password), members join with same name/password.

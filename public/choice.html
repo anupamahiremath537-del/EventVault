@@ -66,6 +66,7 @@ body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-
   <div class="hero-meta">
     <div class="hero-meta-item">📅 <span id="hero-date"></span></div>
     <div class="hero-meta-item">📍 <span id="hero-loc"></span></div>
+    <div class="hero-meta-item">👥 <span id="hero-mode"></span></div>
   </div>
 </div>
 
@@ -89,10 +90,14 @@ body{background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;min-
 </div>
 
 <script>
-const eventId = new URLSearchParams(window.location.search).get('id');
+let eventId = new URLSearchParams(window.location.search).get('id');
+if (!eventId) {
+  const parts = window.location.pathname.split('/');
+  eventId = parts[parts.length - 1];
+}
 
 async function init() {
-  if (!eventId) {
+  if (!eventId || eventId === 'choice.html' || eventId === 'choice') {
     document.getElementById('hero-title').textContent = 'Event not specified';
     return;
   }
@@ -114,6 +119,7 @@ async function init() {
     document.getElementById('hero-title').textContent = ev.title;
     document.getElementById('hero-date').textContent = new Date(ev.date).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     document.getElementById('hero-loc').textContent = ev.location;
+    document.getElementById('hero-mode').textContent = ev.teamMode === 'team' ? `Team Based Participation- Team Size: ${ev.teamSize || 'N/A'}` : 'Individual Participation';
     
     if (ev.registrationStatus === 'closed') {
       document.querySelector('.card h2').textContent = 'Registrations Closed';

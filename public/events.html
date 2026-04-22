@@ -212,6 +212,14 @@ function filterCat(cat, el) {
   renderEvents();
 }
 
+function linkify(text) {
+  if (!text) return '';
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  return text.replace(urlRegex, function(url) {
+    return '<a href="' + url + '" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="color:var(--accent); text-decoration:underline;">' + url + '</a>';
+  });
+}
+
 function renderEvents() {
   const now = new Date();
   let list = allEvents.filter(e => {
@@ -270,7 +278,9 @@ function renderEvents() {
           <div class="event-meta-item"><span>📅</span>${evDate.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'})}</div>
           <div class="event-meta-item"><span>🕐</span>${ev.time}</div>
           <div class="event-meta-item"><span>📍</span>${ev.location}</div>
+          <div class="event-meta-item"><span>👥</span>${ev.teamMode === 'team' ? `Team Based Participation- Team Size: ${ev.teamSize || 'N/A'}` : 'Individual Participation'}</div>
         </div>
+        <div style="font-size:13px; color:var(--text2); line-height:1.5; margin-bottom:16px; height: 40px; overflow: hidden;">${linkify(ev.description) || 'No description provided.'}</div>
         <button class="btn btn-primary" style="width:100%; justify-content:center; ${regBtnStyle}" ${isClosed ? 'disabled' : ''}>${regBtnText}</button>
       </div>
       <div class="event-card-bottom">

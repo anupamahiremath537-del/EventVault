@@ -100,14 +100,14 @@ async function sendDailyCSVReport() {
   console.log('[Scheduled Report] Generating automated CSV export...');
   try {
     const regs = await db.find('registrations', { status: { $ne: 'cancelled' } });
-    const rows = [['Event', 'Name', 'Email', 'USN', 'Phone', 'Type', 'Role / Event', 'Team Name', 'Status', 'Registered At', 'Check-in']];
+    const rows = [['Event', 'Name', 'Email', 'USN', 'Phone', 'Type', 'Role', 'Team Name', 'Status', 'Registered At', 'Check-in']];
 
     // Enrich with event titles
     const enriched = await Promise.all(regs.map(async r => {
       const event = await db.findOne('events', { eventId: r.eventId });
-      const roleOrEvent = r.type === 'volunteer' ? (r.roleName || '') : (event?.title || '');
+      const roleInfo = r.type === 'volunteer' ? (r.roleName || 'Volunteer') : '';
       return {
-        data: [event?.title || 'Unknown', r.name, r.email, r.usn || '', r.phone || '', r.type, roleOrEvent, r.teamName || '', r.status, new Date(r.registeredAt).toLocaleString(), r.checkedIn ? 'Yes' : 'No'],
+        data: [event?.title || 'Unknown', r.name, r.email, r.usn || '', r.phone || '', r.type, roleInfo, r.teamName || '', r.status, new Date(r.registeredAt).toLocaleString(), r.checkedIn ? 'Yes' : 'No'],
         registeredAt: r.registeredAt
       };
     }));

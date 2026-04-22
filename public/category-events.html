@@ -118,6 +118,14 @@ async function loadEvents() {
   } catch(e) { console.error(e); }
 }
 
+function linkify(text) {
+  if (!text) return '';
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  return text.replace(urlRegex, function(url) {
+    return '<a href="' + url + '" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="color:var(--accent); text-decoration:underline;">' + url + '</a>';
+  });
+}
+
 function renderEvents() {
   const now = new Date();
   const list = allEvents.filter(e => 
@@ -160,7 +168,7 @@ function renderEvents() {
     const regBtnStyle = isClosed ? 'background:#6b7280; opacity:0.8; cursor:not-allowed;' : '';
 
     return `
-    <div class="event-card" ${isClosed ? '' : `onclick="window.location.href='/choice/${ev.eventId}'"`} style="--bg-img: url('${eventImg}'); ${isClosed ? 'cursor:default;' : ''}">
+    <div class="event-card" ${isClosed ? '' : `onclick="window.location.href='/choice.html?id=${ev.eventId}'"`} style="--bg-img: url('${eventImg}'); ${isClosed ? 'cursor:default;' : ''}">
       <div class="event-card-top">
         <div class="event-card-cat">${ev.category}</div>
         <h3>${ev.title}</h3>
@@ -168,9 +176,10 @@ function renderEvents() {
           <div class="event-meta-item"><span>📅</span> ${evDate.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'})}</div>
           <div class="event-meta-item"><span>🕐</span> ${ev.time}</div>
           <div class="event-meta-item"><span>📍</span> ${ev.location}</div>
+          <div class="event-meta-item"><span>👥</span> ${ev.teamMode === 'team' ? `Team Based Participation- Team Size: ${ev.teamSize || 'N/A'}` : 'Individual Participation'}</div>
         </div>
-        <p style="font-size:13px; color:var(--text2); line-height:1.5; margin-bottom:16px; height: 40px; overflow: hidden;">${ev.description || 'No description provided.'}</p>
-        <button class="btn btn-primary" onclick="event.stopPropagation(); ${isClosed ? '' : `window.location.href='/choice/${ev.eventId}'`}" style="width:100%; justify-content:center; ${regBtnStyle}" ${isClosed ? 'disabled' : ''}>${regBtnText}</button>
+        <div style="font-size:13px; color:var(--text2); line-height:1.5; margin-bottom:16px; height: 40px; overflow: hidden;">${linkify(ev.description) || 'No description provided.'}</div>
+        <button class="btn btn-primary" onclick="event.stopPropagation(); ${isClosed ? '' : `window.location.href='/choice.html?id=${ev.eventId}'`}" style="width:100%; justify-content:center; ${regBtnStyle}" ${isClosed ? 'disabled' : ''}>${regBtnText}</button>
       </div>
     </div>
   `}).join('');
