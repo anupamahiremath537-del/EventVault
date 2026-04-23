@@ -73,6 +73,21 @@ const db = {
     const { error } = await supabase.from(collection).update(p).eq('id', targetId);
     if (error) throw error;
     return 1;
+  },
+  async remove(collection, query) {
+    let b = supabase.from(collection).delete();        
+    for (const [k, v] of Object.entries(query)) {      
+      const f = normalizeField(k);
+      if (f.startsWith('$')) continue;
+      b = b.eq(f, v);
+    }
+    const { error } = await b;
+    if (error) throw error;
+    return 1;
+  },
+  async deleteRecord(collection, query) {
+    return this.remove(collection, query);
   }
 };
+
 module.exports = db;

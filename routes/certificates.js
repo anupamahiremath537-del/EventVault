@@ -63,7 +63,7 @@ router.patch('/:id', authMiddleware, adminOnly, async (req, res) => {
 // DELETE /api/certificates/:id - Delete entry
 router.delete('/:id', authMiddleware, adminOnly, async (req, res) => {
   try {
-    await db.remove('manual_certificates', { _id: req.params.id });
+    await db.deleteRecord('manual_certificates', { _id: req.params.id });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
