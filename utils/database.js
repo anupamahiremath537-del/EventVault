@@ -107,8 +107,10 @@ const db = {
     return docs.length > 0 ? docs[0] : null;
   },
 
-  async find(collection, query = {}, sort = {}) {
-    let builder = supabase.from(collection).select('*');
+  async find(collection, query = {}, options = {}) {
+    // Support selecting specific columns to avoid fetching large blobs like photos
+    const selectStr = options.select || '*';
+    let builder = supabase.from(collection).select(selectStr);
     const regexFilters = [];
     
     for (const [key, value] of Object.entries(query)) {
@@ -143,8 +145,15 @@ const db = {
       }
     }
 
+    const sort = options.sort || {};
     for (const [key, direction] of Object.entries(sort)) {
       builder = builder.order(normalizeField(key), { ascending: direction !== -1 });
+    }
+
+    // Support pagination
+    if (options.limit) {
+      const start = options.skip || 0;
+      builder = builder.range(start, start + options.limit - 1);
     }
 
     const { data, error } = await builder;
@@ -154,9 +163,8 @@ const db = {
       if (error.message.includes('column') || error.message.includes('cache')) {
         console.warn(`[DB Warning] Schema cache error detected for ${collection}. Attempting reload...`);
         await this.refreshSchema();
-        // Wait a bit for reload
         await new Promise(r => setTimeout(r, 200));
-        const { data: retryData, error: retryError } = await supabase.from(collection).select('*');
+        const { data: retryData, error: retryError } = await supabase.from(collection).select(selectStr);
         if (retryError) throw retryError;
         results = (retryData || []).map(mapRecord);
       } else {

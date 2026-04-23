@@ -57,7 +57,11 @@ router.get('/csv', authMiddleware, async (req, res) => {
     if (type && type !== 'all') query.type = type;
     if (teamName) query.teamName = teamName;
 
-    let regs = await db.find('registrations', query, { registeredAt: 1 });
+    const selectFields = 'id,eventid,registrationid,name,email,phone,usn,password,type,roleid,rolename,teamname,teammembers,status,checkedin,checkinat,registeredat,swaprequested,noshow,hoursvolunteered';
+    let regs = await db.find('registrations', query, { 
+      sort: { registeredAt: 1 },
+      select: selectFields
+    });
     
     // Fetch ONLY necessary events
     const uniqueEventIds = [...new Set(regs.map(r => r.eventId).filter(id => id))];
@@ -743,7 +747,12 @@ router.get('/all', authMiddleware, async (req, res) => {
     if (type && type !== 'all') query.type = type;
 
     console.log('[Registrations API] Fetching registrations from DB...');
-    let regs = await db.find('registrations', query, { registeredAt: -1 });
+    // Exclude 'photo' column for better performance and to avoid timeouts
+    const selectFields = 'id,eventid,registrationid,name,email,phone,usn,password,type,roleid,rolename,teamname,teammembers,status,checkedin,checkinat,registeredat,swaprequested,noshow,hoursvolunteered';
+    let regs = await db.find('registrations', query, { 
+      sort: { registeredAt: -1 },
+      select: selectFields
+    });
     console.log(`[Registrations API] Found ${regs.length} registrations.`);
     
     // Fetch ONLY events related to these registrations to avoid N+1 and massive fetches
