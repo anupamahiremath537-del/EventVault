@@ -5,26 +5,20 @@ const authMiddleware = require('../middleware/auth');
 // GET /api/analytics/overview - Dashboard stats
 router.get('/overview', authMiddleware, async (req, res) => {
   try {
-    // Fetch events and handle filtering in JS to avoid index issues
-    let events = await db.find('events', {});
-    
+    const eventQuery = { status: 'active' };
     if (req.user.role === 'organizer') {
-      events = events.filter(e => e.createdBy === req.user.username);
+      eventQuery.createdBy = req.user.username;
     }
     
-    // Further filter for active events
-    const activeEvents = events.filter(e => e.status === 'active');
+    const activeEvents = await db.find('events', eventQuery);
     const eventIds = activeEvents.map(e => e.eventId);
 
-    // Fetch all registrations and handle filtering in JS
-    let regs = await db.find('registrations', {});
-    
+    const regQuery = { status: { $ne: 'cancelled' } };
     if (req.user.role === 'organizer') {
-      regs = regs.filter(r => eventIds.includes(r.eventId));
+      regQuery.eventId = { $in: eventIds };
     }
     
-    // Filter out cancelled registrations
-    const activeRegs = regs.filter(r => r.status !== 'cancelled');
+    const activeRegs = await db.find('registrations', regQuery);
 
     const totalEvents = activeEvents.length;
     const totalRegs = activeRegs.length;
@@ -58,24 +52,24 @@ router.get('/overview', authMiddleware, async (req, res) => {
 // GET /api/analytics/events - Per-event analytics
 router.get('/events', authMiddleware, async (req, res) => {
   try {
-    // Fetch events and handle filtering in JS
-    let events = await db.find('events', { status: { $ne: 'deleted' } });
-    
+    const eventQuery = { status: { $ne: 'deleted' } };
     if (req.user.role === 'organizer') {
-      events = events.filter(e => e.createdBy === req.user.username);
+      eventQuery.createdBy = req.user.username;
     }
+    
+    let events = await db.find('events', eventQuery);
     
     // Sort by date descending
     events.sort((a, b) => new Date(b.date) - new Date(a.date));
 
     const eventIds = events.map(e => e.eventId);
 
-    // Fetch all registrations and handle filtering in JS
-    let regs = await db.find('registrations', {});
-    
+    const regQuery = {};
     if (req.user.role === 'organizer') {
-      regs = regs.filter(r => eventIds.includes(r.eventId));
+      regQuery.eventId = { $in: eventIds };
     }
+    
+    let regs = await db.find('registrations', regQuery);
 
     const data = events.map(ev => {
       const evRegs = regs.filter(r => r.eventId === ev.eventId);

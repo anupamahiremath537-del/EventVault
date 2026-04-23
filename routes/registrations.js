@@ -734,9 +734,10 @@ router.get('/all', authMiddleware, async (req, res) => {
     let regs = await db.find('registrations', query, { registeredAt: -1 });
     console.log(`[Registrations API] Found ${regs.length} registrations.`);
     
-    // Fetch events to filter by category and date if needed
+    // Fetch ONLY events related to these registrations to avoid N+1 and massive fetches
+    const uniqueEventIds = [...new Set(regs.map(r => r.eventId).filter(id => id))];
+    const events = await db.find('events', { eventId: { $in: uniqueEventIds } });
     const allEventsMap = {};
-    const events = await db.find('events', { status: { $ne: 'deleted' } });
     events.forEach(e => allEventsMap[e.eventId] = e);
 
     // Filter by Category and Date on the results
