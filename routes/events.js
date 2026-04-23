@@ -23,7 +23,14 @@ router.get('/', async (req, res) => {
     }
 
     console.log('[Events API] Step 1: Fetching events from DB...');
-    let rawEvents = await db.find('events', { status: { $ne: 'deleted' } });
+    const query = { status: { $ne: 'deleted' } };
+    if (req.query.isSupportiveTeam === 'true') {
+      query.isSupportiveTeam = true;
+    } else if (req.query.isSupportiveTeam === 'false') {
+      query.isSupportiveTeam = { $ne: true };
+    }
+
+    let rawEvents = await db.find('events', query);
     if (!Array.isArray(rawEvents)) {
       console.error('[Events API] DB returned non-array for events:', typeof rawEvents);
       rawEvents = [];
@@ -34,14 +41,6 @@ router.get('/', async (req, res) => {
     if (req.query.hasResults === 'true') {
       console.log('[Events API] Step 2: Filtering by hasResults...');
       events = events.filter(e => e.results && typeof e.results === 'object' && Object.keys(e.results).length > 0);
-    }
-
-    if (req.query.isSupportiveTeam === 'true') {
-      console.log('[Events API] Step 3a: Filtering by isSupportiveTeam=true...');
-      events = events.filter(e => e.isSupportiveTeam === true || e.isSupportiveTeam === 'true');
-    } else if (req.query.isSupportiveTeam === 'false') {
-      console.log('[Events API] Step 3b: Filtering by isSupportiveTeam=false...');
-      events = events.filter(e => e.isSupportiveTeam !== true && e.isSupportiveTeam !== 'true');
     }
     
     if (user && user.role === 'organizer') {
