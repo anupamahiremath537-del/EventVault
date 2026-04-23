@@ -76,22 +76,36 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Seed admin user on startup
 async function seedAdmin() {
   const bcrypt = require('bcryptjs');
-  try {
-    await db.refreshSchema();
-    const adminUser = process.env.SEED_ADMIN_USERNAME;
-    const adminPass = process.env.SEED_ADMIN_PASSWORD;
-    if (!adminUser || !adminPass) {
-      console.warn('⚠️ Admin seeding skipped: SEED_ADMIN_USERNAME or SEED_ADMIN_PASSWORD not set.');
-      return;
+  let retries = 0;
+  const maxRetries = 5;
+
+  while (retries <= maxRetries) {
+    try {
+      await db.refreshSchema();
+      const adminUser = process.env.SEED_ADMIN_USERNAME;
+      const adminPass = process.env.SEED_ADMIN_PASSWORD;
+      if (!adminUser || !adminPass) {
+        console.warn('⚠️ Admin seeding skipped: SEED_ADMIN_USERNAME or SEED_ADMIN_PASSWORD not set.');
+        return;
+      }
+      const doc = await db.findOne('users', { role: 'admin' });
+      if (!doc) {
+        const hash = await bcrypt.hash(adminPass, 10);
+        await db.insert('users', { username: adminUser, password: hash, role: 'admin', name: 'Event Organizer', email: 'admin@events.com', createdAt: new Date() });
+        console.log(`✅ Admin seeded: username=${adminUser}, password=${adminPass}`);
+      }
+      return; // Success
+    } catch (err) {
+      retries++;
+      console.error(`❌ Attempt ${retries}/${maxRetries + 1} Error seeding admin:`, err.message);
+      if (retries <= maxRetries) {
+        const delay = Math.pow(2, retries) * 1000;
+        console.warn(`[Startup Warning] Database not ready. Retrying seed in ${delay}ms...`);
+        await new Promise(r => setTimeout(r, delay));
+      } else {
+        console.error('❌ Failed to seed admin after multiple attempts. Application may be unstable.');
+      }
     }
-    const doc = await db.findOne('users', { role: 'admin' });
-    if (!doc) {
-      const hash = await bcrypt.hash(adminPass, 10);
-      await db.insert('users', { username: adminUser, password: hash, role: 'admin', name: 'Event Organizer', email: 'admin@events.com', createdAt: new Date() });
-      console.log(`✅ Admin seeded: username=${adminUser}, password=${adminPass}`);
-    }
-  } catch (err) {
-    console.error('❌ Error seeding admin:', err.message);
   }
 }
 

@@ -108,114 +108,100 @@ const db = {
   },
 
   async find(collection, query = {}, options = {}) {
-    // Support selecting specific columns to avoid fetching large blobs like photos
+    let retries = 0;
+    const maxRetries = 3;
     const selectStr = options.select || '*';
-    let builder = supabase.from(collection).select(selectStr);
-    const regexFilters = [];
-    
-    for (const [key, value] of Object.entries(query)) {
-      if (value instanceof RegExp) {
-        regexFilters.push({ key, value });
-        continue;
-      }
+
+    while (retries <= maxRetries) {
+      let builder = supabase.from(collection).select(selectStr);
+      const regexFilters = [];
       
-      const field = normalizeField(key);
-      if (key === '$or' && Array.isArray(value)) {
-        const orConditions = value.map(cond => {
-          const [subKey, subVal] = Object.entries(cond)[0];
-          const subField = normalizeField(subKey);
-          
-          if (subVal === null) return `${subField}.is.null`;
-          
-          if (typeof subVal === 'object' && subVal !== null) {
-            if (subVal.$ne !== undefined) {
-              return subVal.$ne === null ? `${subField}.not.is.null` : `${subField}.neq.${subVal.$ne}`;
-            }
-            if (subVal.$eq !== undefined) {
-              return subVal.$eq === null ? `${subField}.is.null` : `${subField}.eq.${subVal.$eq}`;
+      for (const [key, value] of Object.entries(query)) {
+        if (value instanceof RegExp) {
+          regexFilters.push({ key, value });
+          continue;
+        }
+        
+        const field = normalizeField(key);
+        if (key === '$or' && Array.isArray(value)) {
+          const orConditions = value.map(cond => {
+            const [subKey, subVal] = Object.entries(cond)[0];
+            const subField = normalizeField(subKey);
+            if (subVal === null) return `${subField}.is.null`;
+            if (typeof subVal === 'object' && subVal !== null) {
+              if (subVal.$ne !== undefined) return subVal.$ne === null ? `${subField}.not.is.null` : `${subField}.neq.${subVal.$ne}`;
+              if (subVal.$eq !== undefined) return subVal.$eq === null ? `${subField}.is.null` : `${subField}.eq.${subVal.$eq}`;
+              return `${subField}.eq.${subVal}`;
             }
             return `${subField}.eq.${subVal}`;
+          }).join(',');
+          builder = builder.or(orConditions);
+        } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+          if (value.$ne !== undefined) {
+            if (value.$ne === null) builder = builder.not(field, 'is', null);
+            else builder = builder.not(field, 'eq', value.$ne);
           }
-          return `${subField}.eq.${subVal}`;
-        }).join(',');
-        builder = builder.or(orConditions);
-      } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-        if (value.$ne !== undefined) {
-          if (value.$ne === null) builder = builder.not(field, 'is', null);
-          else builder = builder.not(field, 'eq', value.$ne);
+          else if (value.$in !== undefined) {
+            const nonNullValues = value.$in.filter(v => v !== null);
+            const hasNull = value.$in.includes(null);
+            if (hasNull && nonNullValues.length > 0) builder = builder.or(`${field}.in.(${nonNullValues.join(',')}),${field}.is.null`);
+            else if (hasNull) builder = builder.is(field, null);
+            else builder = builder.in(field, nonNullValues);
+          }
+          else if (value.$gt !== undefined) builder = builder.gt(field, value.$gt);
+          else if (value.$lt !== undefined) builder = builder.lt(field, value.$lt);
+          else if (value.$gte !== undefined) builder = builder.gte(field, value.$gte);
+          else if (value.$lte !== undefined) builder = builder.lte(field, value.$lte);
+          else if (value.$eq !== undefined) {
+            if (value.$eq === null) builder = builder.is(field, null);
+            else builder = builder.eq(field, value.$eq);
+          }
+          else builder = builder.eq(field, value);
+        } else {
+          if (value === null) builder = builder.is(field, null);
+          else builder = builder.eq(field, value);
         }
-        else if (value.$in !== undefined) {
-          const nonNullValues = value.$in.filter(v => v !== null);
-          const hasNull = value.$in.includes(null);
-          
-          if (hasNull && nonNullValues.length > 0) {
-            builder = builder.or(`${field}.in.(${nonNullValues.join(',')}),${field}.is.null`);
-          } else if (hasNull) {
-            builder = builder.is(field, null);
-          } else {
-            builder = builder.in(field, nonNullValues);
+      }
+
+      const sort = options.sort || {};
+      for (const [key, direction] of Object.entries(sort)) {
+        builder = builder.order(normalizeField(key), { ascending: direction !== -1 });
+      }
+
+      if (options.limit) {
+        const start = options.skip || 0;
+        builder = builder.range(start, start + options.limit - 1);
+      }
+
+      const { data, error } = await builder;
+      
+      if (!error) {
+        let results = (data || []).map(mapRecord);
+        if (regexFilters.length > 0) {
+          for (const { key, value } of regexFilters) {
+            results = results.filter(doc => doc[key] && value.test(doc[key]));
           }
         }
-        else if (value.$gt !== undefined) builder = builder.gt(field, value.$gt);
-        else if (value.$lt !== undefined) builder = builder.lt(field, value.$lt);
-        else if (value.$gte !== undefined) builder = builder.gte(field, value.$gte);
-        else if (value.$lte !== undefined) builder = builder.lte(field, value.$lte);
-        else if (value.$eq !== undefined) {
-          if (value.$eq === null) builder = builder.is(field, null);
-          else builder = builder.eq(field, value.$eq);
+        return results;
+      }
+
+      console.error(`❌ [DB Error] Attempt ${retries + 1}/${maxRetries + 1} collection=${collection} error=${error.message} code=${error.code}`);
+      
+      if (error.code === 'PGRST002' || error.message.includes('cache')) {
+        retries++;
+        if (retries <= maxRetries) {
+          const delay = Math.pow(2, retries) * 500;
+          console.warn(`[DB Warning] Schema cache error. Retrying in ${delay}ms...`);
+          await this.refreshSchema();
+          await new Promise(r => setTimeout(r, delay));
+          continue;
         }
-        else builder = builder.eq(field, value);
-      } else {
-        if (value === null) builder = builder.is(field, null);
-        else builder = builder.eq(field, value);
       }
+      
+      const err = new Error(error.message);
+      err.code = error.code;
+      throw err;
     }
-
-    const sort = options.sort || {};
-    for (const [key, direction] of Object.entries(sort)) {
-      builder = builder.order(normalizeField(key), { ascending: direction !== -1 });
-    }
-
-    // Support pagination
-    if (options.limit) {
-      const start = options.skip || 0;
-      builder = builder.range(start, start + options.limit - 1);
-    }
-
-    const { data, error } = await builder;
-    let results = [];
-    if (error) {
-      console.error(`❌ [DB Error] collection=${collection} error=${error.message} code=${error.code}`);
-      if (error.message.includes('column') || error.message.includes('cache') || error.code === 'PGRST002') {
-        console.warn(`[DB Warning] Schema cache error detected for ${collection}. Attempting reload...`);
-        await this.refreshSchema();
-        await new Promise(r => setTimeout(r, 300));
-        
-        // Re-execute the EXACT SAME builder if possible, or rebuild it
-        // For simplicity, let's just rebuild it once more
-        let retryBuilder = supabase.from(collection).select(selectStr);
-        // ... (repeat same logic as above for query, sort, limit)
-        // Actually, let's just throw the error and let the caller retry if needed, 
-        // OR implement a more robust retry. 
-        // For now, let's fix the immediate N+1 and timeout issues.
-        throw new Error(`Database error (${error.code}): ${error.message}`);
-      } else {
-        const err = new Error(error.message);
-        err.code = error.code;
-        throw err;
-      }
-    } else {
-      results = (data || []).map(mapRecord);
-    }
-
-    // Apply regex filters in memory
-    if (regexFilters.length > 0) {
-      for (const { key, value } of regexFilters) {
-        results = results.filter(doc => doc[key] && value.test(doc[key]));
-      }
-    }
-
-    return results;
   },
 
   async insert(collection, doc) {
