@@ -26,7 +26,7 @@ const mapRecord = r => {
 };
 
 const db = {
-  async refreshSchema() { return; }, // Placeholder for compatibility
+  async refreshSchema() { return; },
   async findOne(collection, query, options = {}) {
     const docs = await this.find(collection, query, { ...options, limit: 1 });
     return docs[0] || null;
@@ -38,7 +38,16 @@ const db = {
     let b = supabase.from(collection).select(select);
     for (const [k, v] of Object.entries(query)) {
       const f = normalizeField(k);
-      if (v && typeof v === 'object' && v.$in) b = b.in(f, v.$in);
+      // RESTORED $OR FOR DEPLOYMENT COMPATIBILITY
+      if (f === '$or' && Array.isArray(v)) {
+        const orStr = v.map(cond => {
+          const [ck, cv] = Object.entries(cond)[0];
+          const cf = normalizeField(ck);
+          return cv === null ? `${cf}.is.null` : `${cf}.eq.${cv}`;
+        }).join(',');
+        b = b.or(orStr);
+      }
+      else if (v && typeof v === 'object' && v.$in) b = b.in(f, v.$in);
       else if (v && typeof v === 'object' && v.$ne) b = b.neq(f, v.$ne);
       else b = b.eq(f, v);
     }
@@ -53,7 +62,15 @@ const db = {
     let b = supabase.from(collection).select('*', { count: 'exact', head: true });
     for (const [k, v] of Object.entries(query)) {
       const f = normalizeField(k);
-      if (v && typeof v === 'object' && v.$ne) b = b.neq(f, v.$ne);
+      if (f === '$or' && Array.isArray(v)) {
+        const orStr = v.map(cond => {
+          const [ck, cv] = Object.entries(cond)[0];
+          const cf = normalizeField(ck);
+          return `${cf}.eq.${cv}`;
+        }).join(',');
+        b = b.or(orStr);
+      }
+      else if (v && typeof v === 'object' && v.$ne) b = b.neq(f, v.$ne);
       else b = b.eq(f, v);
     }
     const { count, error } = await b;
@@ -71,7 +88,7 @@ const db = {
     const p = {};
     const d = update.$set || update;
     for (const [k, v] of Object.entries(d)) if (k !== 'id') p[normalizeField(k)] = v;
-    const { error } = await supabase.from(collection).update(p).eq('id', query.id || query._id || query.registrationId);
+    const { error } = await supabase.from(collection).update(p).eq('id', query.id || query._id || query.registrationId || query.registrationid);
     if (error) throw error;
     return 1;
   }
