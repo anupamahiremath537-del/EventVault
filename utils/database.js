@@ -98,24 +98,30 @@ const mapRecord = record => {
 const db = {
   async refreshSchema() {
     try {
-      await supabase.rpc('exec_sql', { sql: "NOTIFY pgrst, 'reload schema';" });
-    } catch (e) {}
+      console.log('[DB Info] Refreshing PostgREST schema cache...');
+      // Use a direct SQL notify if possible, but keep it silent if it fails
+      const { error } = await supabase.rpc('exec_sql', { sql: "NOTIFY pgrst, 'reload schema';" });
+      if (error) console.warn('[DB Warning] Schema refresh RPC failed (expected during cache issues):', error.message);
+    } catch (e) {
+      // ignore
+    }
   },
 
-  async findOne(collection, query) {
-    const docs = await this.find(collection, query);
+  async findOne(collection, query, options = {}) {
+    const docs = await this.find(collection, query, { ...options, limit: 1 });
     return docs.length > 0 ? docs[0] : null;
   },
 
   async find(collection, query = {}, options = {}) {
     let retries = 0;
-    const maxRetries = 3;
+    const maxRetries = 4; // Increased retries
     const selectStr = options.select || '*';
 
     while (retries <= maxRetries) {
       let builder = supabase.from(collection).select(selectStr);
       const regexFilters = [];
       
+      // ... same logic for building query ...
       for (const [key, value] of Object.entries(query)) {
         if (value instanceof RegExp) {
           regexFilters.push({ key, value });
@@ -173,34 +179,45 @@ const db = {
         builder = builder.range(start, start + options.limit - 1);
       }
 
-      const { data, error } = await builder;
-      
-      if (!error) {
-        let results = (data || []).map(mapRecord);
-        if (regexFilters.length > 0) {
-          for (const { key, value } of regexFilters) {
-            results = results.filter(doc => doc[key] && value.test(doc[key]));
+      try {
+        const { data, error } = await builder;
+        
+        if (!error) {
+          let results = (data || []).map(mapRecord);
+          if (regexFilters.length > 0) {
+            for (const { key, value } of regexFilters) {
+              results = results.filter(doc => doc[key] && value.test(doc[key]));
+            }
+          }
+          return results;
+        }
+
+        console.error(`❌ [DB Error] Attempt ${retries + 1}/${maxRetries + 1} collection=${collection} error=${error.message} code=${error.code}`);
+        
+        // Handle common transient errors
+        if (error.code === 'PGRST002' || error.message.includes('cache') || error.code === '57014' || error.message.includes('timeout')) {
+          retries++;
+          if (retries <= maxRetries) {
+            const delay = Math.pow(2, retries) * 1000; // Exponential backoff: 2s, 4s, 8s, 16s
+            console.warn(`[DB Warning] Transient error detected. Refreshing schema and retrying in ${delay}ms...`);
+            
+            // Try to refresh schema but don't wait for it to finish if it's slow
+            this.refreshSchema().catch(() => {});
+            
+            await new Promise(r => setTimeout(r, delay));
+            continue;
           }
         }
-        return results;
-      }
-
-      console.error(`❌ [DB Error] Attempt ${retries + 1}/${maxRetries + 1} collection=${collection} error=${error.message} code=${error.code}`);
-      
-      if (error.code === 'PGRST002' || error.message.includes('cache')) {
+        
+        const err = new Error(error.message);
+        err.code = error.code;
+        throw err;
+      } catch (catchErr) {
+        if (retries >= maxRetries) throw catchErr;
         retries++;
-        if (retries <= maxRetries) {
-          const delay = Math.pow(2, retries) * 500;
-          console.warn(`[DB Warning] Schema cache error. Retrying in ${delay}ms...`);
-          await this.refreshSchema();
-          await new Promise(r => setTimeout(r, delay));
-          continue;
-        }
+        const delay = Math.pow(2, retries) * 1000;
+        await new Promise(r => setTimeout(r, delay));
       }
-      
-      const err = new Error(error.message);
-      err.code = error.code;
-      throw err;
     }
   },
 
