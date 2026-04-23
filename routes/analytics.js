@@ -13,38 +13,51 @@ router.get('/overview', authMiddleware, async (req, res) => {
     const activeEvents = await db.find('events', eventQuery);
     const eventIds = activeEvents.map(e => e.eventId);
 
-    const regQuery = { status: { $ne: 'cancelled' } };
+    const baseRegQuery = { status: { $ne: 'cancelled' } };
     if (req.user.role === 'organizer') {
-      regQuery.eventId = { $in: eventIds };
+      baseRegQuery.eventId = { $in: eventIds };
     }
     
-    const activeRegs = await db.find('registrations', regQuery);
+    // Optimization: Use db.count for most metrics to avoid fetching massive rows
+    const [
+      totalRegs,
+      totalVolunteers,
+      totalParticipants,
+      checkedIn,
+      noShows,
+      swapRequests
+    ] = await Promise.all([
+      db.count('registrations', baseRegQuery),
+      db.count('registrations', { ...baseRegQuery, type: 'volunteer' }),
+      db.count('registrations', { ...baseRegQuery, type: 'participant' }),
+      db.count('registrations', { ...baseRegQuery, checkedIn: true }),
+      db.count('registrations', { ...baseRegQuery, noShow: true }),
+      db.count('registrations', { ...baseRegQuery, swapRequested: true })
+    ]);
 
     const totalEvents = activeEvents.length;
-    const totalRegs = activeRegs.length;
-    
     const now = new Date();
     const upcomingEvents = activeEvents.filter(e => new Date(e.date + 'T' + (e.time || '00:00')) > now).length;
     const pastEvents = activeEvents.filter(e => new Date(e.date + 'T' + (e.time || '00:00')) <= now).length;
-    const totalVolunteers = activeRegs.filter(r => r.type === 'volunteer').length;
-    const totalParticipants = activeRegs.filter(r => r.type === 'participant').length;
-    const checkedIn = activeRegs.filter(r => r.checkedIn).length;
-    const noShows = activeRegs.filter(r => r.noShow).length;
-    const swapRequests = activeRegs.filter(r => r.swapRequested).length;
 
-    // Volunteer coverage per event
+    // Volunteer coverage per event - Select minimal fields to avoid timeout
     let totalSlots = 0, filledSlots = 0;
+    const regFields = 'eventId,roleId,type';
+    const regsForCoverage = await db.find('registrations', baseRegQuery, { select: regFields });
+
     activeEvents.forEach(ev => {
       (ev.volunteerRoles || []).forEach(role => {
         totalSlots += role.slots;
-        const filled = activeRegs.filter(r => r.eventId === ev.eventId && r.roleId === role.id).length;
+        const filled = regsForCoverage.filter(r => r.eventId === ev.eventId && r.roleId === role.id && r.type === 'volunteer').length;
         filledSlots += Math.min(filled, role.slots);
       });
     });
+    
     const volunteerCoverage = totalSlots > 0 ? Math.round((filledSlots / totalSlots) * 100) : 0;
 
     res.json({ totalEvents, upcomingEvents, pastEvents, totalRegs, totalVolunteers, totalParticipants, checkedIn, noShows, swapRequests, volunteerCoverage, filledSlots, totalSlots });
   } catch (err) {
+    console.error('❌ [Analytics Overview Error]', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -58,10 +71,7 @@ router.get('/events', authMiddleware, async (req, res) => {
     }
     
     let events = await db.find('events', eventQuery);
-    
-    // Sort by date descending
     events.sort((a, b) => new Date(b.date) - new Date(a.date));
-
     const eventIds = events.map(e => e.eventId);
 
     const regQuery = {};
@@ -69,7 +79,9 @@ router.get('/events', authMiddleware, async (req, res) => {
       regQuery.eventId = { $in: eventIds };
     }
     
-    let regs = await db.find('registrations', regQuery);
+    // Minimal fields to avoid timeout
+    const regFields = 'eventId,roleId,type,status,checkedIn,noShow';
+    let regs = await db.find('registrations', regQuery, { select: regFields });
 
     const data = events.map(ev => {
       const evRegs = regs.filter(r => r.eventId === ev.eventId);
@@ -93,6 +105,7 @@ router.get('/events', authMiddleware, async (req, res) => {
     });
     res.json(data);
   } catch (err) {
+    console.error('❌ [Analytics Events Error]', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -100,7 +113,8 @@ router.get('/events', authMiddleware, async (req, res) => {
 // GET /api/analytics/top-volunteers - Top volunteers by event count
 router.get('/top-volunteers', authMiddleware, async (req, res) => {
   try {
-    const regs = await db.find('registrations', { type: 'volunteer', status: { $ne: 'cancelled' } });
+    // Minimal fields
+    const regs = await db.find('registrations', { type: 'volunteer', status: { $ne: 'cancelled' } }, { select: 'email,name' });
     const map = {};
     regs.forEach(r => {
       if (!map[r.email]) map[r.email] = { name: r.name, email: r.email, events: 0 };
@@ -109,6 +123,7 @@ router.get('/top-volunteers', authMiddleware, async (req, res) => {
     const sorted = Object.values(map).sort((a, b) => b.events - a.events).slice(0, 10);
     res.json(sorted);
   } catch (err) {
+    console.error('❌ [Analytics Top Volunteers Error]', err);
     res.status(500).json({ error: err.message });
   }
 });

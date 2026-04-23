@@ -99,7 +99,11 @@ async function seedAdmin() {
 async function sendDailyCSVReport() {
   console.log('[Scheduled Report] Generating automated CSV export...');
   try {
-    const regs = await db.find('registrations', { status: { $ne: 'cancelled' } }, { registeredAt: -1 });
+    const selectFields = 'id,eventid,registrationid,name,email,phone,usn,password,type,roleid,rolename,teamname,teammembers,status,checkedin,checkinat,registeredat,swaprequested,noshow,hoursvolunteered';
+    const regs = await db.find('registrations', { status: { $ne: 'cancelled' } }, { 
+      sort: { registeredAt: -1 },
+      select: selectFields
+    });
     
     // Fetch all events once to avoid N+1 queries
     const events = await db.find('events', {});
