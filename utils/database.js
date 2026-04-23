@@ -124,24 +124,50 @@ const db = {
         const orConditions = value.map(cond => {
           const [subKey, subVal] = Object.entries(cond)[0];
           const subField = normalizeField(subKey);
+          
+          if (subVal === null) return `${subField}.is.null`;
+          
           if (typeof subVal === 'object' && subVal !== null) {
-            if (subVal.$ne !== undefined) return `${subField}.neq.${subVal.$ne}`;
-            if (subVal.$eq !== undefined) return `${subField}.eq.${subVal.$eq}`;
+            if (subVal.$ne !== undefined) {
+              return subVal.$ne === null ? `${subField}.not.is.null` : `${subField}.neq.${subVal.$ne}`;
+            }
+            if (subVal.$eq !== undefined) {
+              return subVal.$eq === null ? `${subField}.is.null` : `${subField}.eq.${subVal.$eq}`;
+            }
             return `${subField}.eq.${subVal}`;
           }
           return `${subField}.eq.${subVal}`;
         }).join(',');
         builder = builder.or(orConditions);
       } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-        if (value.$ne !== undefined) builder = builder.not(field, 'eq', value.$ne);
-        else if (value.$in !== undefined) builder = builder.in(field, value.$in);
+        if (value.$ne !== undefined) {
+          if (value.$ne === null) builder = builder.not(field, 'is', null);
+          else builder = builder.not(field, 'eq', value.$ne);
+        }
+        else if (value.$in !== undefined) {
+          const nonNullValues = value.$in.filter(v => v !== null);
+          const hasNull = value.$in.includes(null);
+          
+          if (hasNull && nonNullValues.length > 0) {
+            builder = builder.or(`${field}.in.(${nonNullValues.join(',')}),${field}.is.null`);
+          } else if (hasNull) {
+            builder = builder.is(field, null);
+          } else {
+            builder = builder.in(field, nonNullValues);
+          }
+        }
         else if (value.$gt !== undefined) builder = builder.gt(field, value.$gt);
         else if (value.$lt !== undefined) builder = builder.lt(field, value.$lt);
         else if (value.$gte !== undefined) builder = builder.gte(field, value.$gte);
         else if (value.$lte !== undefined) builder = builder.lte(field, value.$lte);
+        else if (value.$eq !== undefined) {
+          if (value.$eq === null) builder = builder.is(field, null);
+          else builder = builder.eq(field, value.$eq);
+        }
         else builder = builder.eq(field, value);
       } else {
-        builder = builder.eq(field, value);
+        if (value === null) builder = builder.is(field, null);
+        else builder = builder.eq(field, value);
       }
     }
 
@@ -302,24 +328,50 @@ const db = {
         const orConditions = value.map(cond => {
           const [subKey, subVal] = Object.entries(cond)[0];
           const subField = normalizeField(subKey);
+          
+          if (subVal === null) return `${subField}.is.null`;
+          
           if (typeof subVal === 'object' && subVal !== null) {
-            if (subVal.$ne !== undefined) return `${subField}.neq.${subVal.$ne}`;
-            if (subVal.$eq !== undefined) return `${subField}.eq.${subVal.$eq}`;
+            if (subVal.$ne !== undefined) {
+              return subVal.$ne === null ? `${subField}.not.is.null` : `${subField}.neq.${subVal.$ne}`;
+            }
+            if (subVal.$eq !== undefined) {
+              return subVal.$eq === null ? `${subField}.is.null` : `${subField}.eq.${subVal.$eq}`;
+            }
             return `${subField}.eq.${subVal}`;
           }
           return `${subField}.eq.${subVal}`;
         }).join(',');
         builder = builder.or(orConditions);
       } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-        if (value.$ne !== undefined) builder = builder.not(field, 'eq', value.$ne);
-        else if (value.$in !== undefined) builder = builder.in(field, value.$in);
+        if (value.$ne !== undefined) {
+          if (value.$ne === null) builder = builder.not(field, 'is', null);
+          else builder = builder.not(field, 'eq', value.$ne);
+        }
+        else if (value.$in !== undefined) {
+          const nonNullValues = value.$in.filter(v => v !== null);
+          const hasNull = value.$in.includes(null);
+          
+          if (hasNull && nonNullValues.length > 0) {
+            builder = builder.or(`${field}.in.(${nonNullValues.join(',')}),${field}.is.null`);
+          } else if (hasNull) {
+            builder = builder.is(field, null);
+          } else {
+            builder = builder.in(field, nonNullValues);
+          }
+        }
         else if (value.$gt !== undefined) builder = builder.gt(field, value.$gt);
         else if (value.$lt !== undefined) builder = builder.lt(field, value.$lt);
         else if (value.$gte !== undefined) builder = builder.gte(field, value.$gte);
         else if (value.$lte !== undefined) builder = builder.lte(field, value.$lte);
+        else if (value.$eq !== undefined) {
+          if (value.$eq === null) builder = builder.is(field, null);
+          else builder = builder.eq(field, value.$eq);
+        }
         else builder = builder.eq(field, value);
       } else {
-        builder = builder.eq(field, value);
+        if (value === null) builder = builder.is(field, null);
+        else builder = builder.eq(field, value);
       }
     }
 

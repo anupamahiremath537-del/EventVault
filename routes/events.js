@@ -27,7 +27,8 @@ router.get('/', async (req, res) => {
     if (req.query.isSupportiveTeam === 'true') {
       query.isSupportiveTeam = true;
     } else if (req.query.isSupportiveTeam === 'false') {
-      query.isSupportiveTeam = { $ne: true };
+      // Use $or to include both false and null/undefined values
+      query.$or = [{ isSupportiveTeam: false }, { isSupportiveTeam: null }];
     }
 
     let rawEvents = await db.find('events', query);

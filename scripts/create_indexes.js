@@ -27,6 +27,7 @@ async function run() {
     -- Also add indexes for 'events' table which is often joined or filtered
     CREATE INDEX IF NOT EXISTS idx_events_eventid ON events(eventid);
     CREATE INDEX IF NOT EXISTS idx_events_createdby ON events(createdby);
+    CREATE INDEX IF NOT EXISTS idx_events_issupportiveteam ON events(issupportiveteam);
     CREATE INDEX IF NOT EXISTS idx_events_status ON events(status);
     CREATE INDEX IF NOT EXISTS idx_events_category ON events(category);
 
