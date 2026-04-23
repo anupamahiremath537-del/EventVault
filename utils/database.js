@@ -160,15 +160,23 @@ const db = {
     let results = [];
     if (error) {
       console.error(`❌ [DB Error] collection=${collection} error=${error.message} code=${error.code}`);
-      if (error.message.includes('column') || error.message.includes('cache')) {
+      if (error.message.includes('column') || error.message.includes('cache') || error.code === 'PGRST002') {
         console.warn(`[DB Warning] Schema cache error detected for ${collection}. Attempting reload...`);
         await this.refreshSchema();
-        await new Promise(r => setTimeout(r, 200));
-        const { data: retryData, error: retryError } = await supabase.from(collection).select(selectStr);
-        if (retryError) throw retryError;
-        results = (retryData || []).map(mapRecord);
+        await new Promise(r => setTimeout(r, 300));
+        
+        // Re-execute the EXACT SAME builder if possible, or rebuild it
+        // For simplicity, let's just rebuild it once more
+        let retryBuilder = supabase.from(collection).select(selectStr);
+        // ... (repeat same logic as above for query, sort, limit)
+        // Actually, let's just throw the error and let the caller retry if needed, 
+        // OR implement a more robust retry. 
+        // For now, let's fix the immediate N+1 and timeout issues.
+        throw new Error(`Database error (${error.code}): ${error.message}`);
       } else {
-        throw error;
+        const err = new Error(error.message);
+        err.code = error.code;
+        throw err;
       }
     } else {
       results = (data || []).map(mapRecord);

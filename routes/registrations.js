@@ -753,7 +753,7 @@ router.get('/all', authMiddleware, async (req, res) => {
     let regs = await db.find('registrations', query, { 
       sort: { registeredAt: -1 },
       select: selectFields,
-      limit: 1000 
+      limit: 500 
     });
     console.log(`[Registrations API] Found ${regs.length} registrations.`);
     
