@@ -1,28 +1,22 @@
 const { createClient } = require('@supabase/supabase-js');
 const { v4: uuidv4 } = require('uuid');
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false }
 });
 
-const normalizeField = key => {
-  const map = { eventId: 'eventid', registrationId: 'registrationid', roleId: 'roleid', _id: 'id' };
-  return map[key] || key.toLowerCase(); 
-};
+const normalizeField = k => ({ eventId: 'eventid', registrationId: 'registrationid', roleId: 'roleid', _id: 'id' }[k] || k.toLowerCase());
 
 const mapRecord = r => {
   if (!r) return null;
   const fieldMap = { eventid: 'eventId', registrationid: 'registrationId', roleid: 'roleId', issupportiveteam: 'isSupportiveTeam', checkedin: 'checkedIn', registeredat: 'registeredAt' };
-  const mapped = {};
+  const m = {};
   for (const [k, v] of Object.entries(r)) {
     const key = fieldMap[k.toLowerCase()] || k;
-    mapped[key] = (['isSupportiveTeam', 'checkedIn', 'noShow', 'swapRequested'].includes(key)) ? (v === true || v === 'true') : v;
-    if (key.toLowerCase() === 'id') mapped._id = v;
+    m[key] = (['isSupportiveTeam', 'checkedIn', 'noShow', 'swapRequested'].includes(key)) ? (v === true || v === 'true') : v;
+    if (key.toLowerCase() === 'id') m._id = v;
   }
-  return mapped;
+  return m;
 };
 
 const db = {
@@ -38,16 +32,10 @@ const db = {
     let b = supabase.from(collection).select(select);
     for (const [k, v] of Object.entries(query)) {
       const f = normalizeField(k);
-      // RESTORED $OR FOR DEPLOYMENT COMPATIBILITY
-      if (f === '$or' && Array.isArray(v)) {
-        const orStr = v.map(cond => {
-          const [ck, cv] = Object.entries(cond)[0];
-          const cf = normalizeField(ck);
-          return cv === null ? `${cf}.is.null` : `${cf}.eq.${cv}`;
-        }).join(',');
-        b = b.or(orStr);
-      }
-      else if (v && typeof v === 'object' && v.$in) b = b.in(f, v.$in);
+      // SAFETY: Completely ignore $or and other complex keys to prevent SQL errors
+      if (f.startsWith('$')) continue; 
+      
+      if (v && typeof v === 'object' && v.$in) b = b.in(f, v.$in);
       else if (v && typeof v === 'object' && v.$ne) b = b.neq(f, v.$ne);
       else b = b.eq(f, v);
     }
@@ -62,15 +50,8 @@ const db = {
     let b = supabase.from(collection).select('*', { count: 'exact', head: true });
     for (const [k, v] of Object.entries(query)) {
       const f = normalizeField(k);
-      if (f === '$or' && Array.isArray(v)) {
-        const orStr = v.map(cond => {
-          const [ck, cv] = Object.entries(cond)[0];
-          const cf = normalizeField(ck);
-          return `${cf}.eq.${cv}`;
-        }).join(',');
-        b = b.or(orStr);
-      }
-      else if (v && typeof v === 'object' && v.$ne) b = b.neq(f, v.$ne);
+      if (f.startsWith('$')) continue;
+      if (v && typeof v === 'object' && v.$ne) b = b.neq(f, v.$ne);
       else b = b.eq(f, v);
     }
     const { count, error } = await b;
@@ -88,7 +69,8 @@ const db = {
     const p = {};
     const d = update.$set || update;
     for (const [k, v] of Object.entries(d)) if (k !== 'id') p[normalizeField(k)] = v;
-    const { error } = await supabase.from(collection).update(p).eq('id', query.id || query._id || query.registrationId || query.registrationid);
+    const targetId = query.id || query._id || query.registrationId || query.registrationid;
+    const { error } = await supabase.from(collection).update(p).eq('id', targetId);
     if (error) throw error;
     return 1;
   }

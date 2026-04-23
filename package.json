@@ -1,6 +1,6 @@
 {
   "name": "event-scheduling-volunteer-app",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Event Scheduling and Volunteer Sign-up Application",
   "main": "server.js",
   "scripts": {
