@@ -81,10 +81,19 @@ router.get('/csv', authMiddleware, async (req, res) => {
       });
     }
 
-    const rows = [['Event', 'Organizer', 'Category', 'Name', 'Email', 'USN', 'Phone', 'Type', 'Role', 'Team Name', 'Status', 'Registered At', 'Check-in']];
+    const allUsers = await db.find('users', {});
+    const userMap = {};
+    allUsers.forEach(u => {
+      if (u.email) userMap[u.email.toLowerCase()] = u;
+      if (u.usn) userMap[u.usn.toLowerCase()] = u;
+    });
+
+    const rows = [['Event', 'Organizer', 'Category', 'Name', 'Email', 'USN', 'Semester', 'Branch', 'Phone', 'Type', 'Role', 'Team Name', 'Status', 'Registered At', 'Check-in']];
     
     regs.forEach(r => {
       const event = allEventsMap[r.eventId];
+      const user = userMap[r.email?.toLowerCase()] || userMap[r.usn?.toLowerCase()];
+      
       // For volunteers, show their role; for participants, show the event title as context
       const roleInfo = r.type === 'volunteer' ? (r.roleName || 'Volunteer') : (event?.title || '');
       rows.push([
@@ -94,6 +103,8 @@ router.get('/csv', authMiddleware, async (req, res) => {
         r.name, 
         r.email, 
         r.usn || '', 
+        user?.semester || '',
+        user?.branch || '',
         r.phone || '', 
         r.type, 
         roleInfo, 
@@ -791,9 +802,24 @@ router.get('/all', authMiddleware, async (req, res) => {
       });
     }
 
+    const allUsers = await db.find('users', {});
+    const userMap = {};
+    allUsers.forEach(u => {
+      if (u.email) userMap[u.email.toLowerCase()] = u;
+      if (u.usn) userMap[u.usn.toLowerCase()] = u;
+    });
+
     const enriched = regs.map(r => {
       const event = allEventsMap[r.eventId];
-      return { ...r, eventTitle: event?.title, eventCategory: event?.category, eventDate: event?.date };
+      const user = userMap[r.email?.toLowerCase()] || userMap[r.usn?.toLowerCase()];
+      return { 
+        ...r, 
+        eventTitle: event?.title, 
+        eventCategory: event?.category, 
+        eventDate: event?.date,
+        semester: user?.semester || '',
+        branch: user?.branch || ''
+      };
     });
 
     console.log('[Registrations API] Returning enriched registrations.');

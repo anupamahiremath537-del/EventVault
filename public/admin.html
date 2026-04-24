@@ -2129,7 +2129,10 @@ function renderRegs() {
         </div>
       </td>
       <td>${r.email}</td>
-      <td style="font-family:'DM Mono',monospace;font-size:12px">${r.usn || '—'}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:12px">
+        <div>${r.usn || '—'}</div>
+        ${(r.semester || r.branch) ? `<div style="font-size:10px;color:var(--text3);margin-top:2px">${r.semester || ''} ${r.branch || ''}</div>` : ''}
+      </td>
       <td><span class="badge badge-${r.type}">${r.type}</span></td>
       <td>${r.type === 'volunteer' ? (r.roleName || '—') : (r.eventTitle || '—')}</td>
       <td><span class="badge badge-${r.status}">${r.status}</span></td>
