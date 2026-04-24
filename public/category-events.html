@@ -306,7 +306,7 @@ function renderEvents() {
           <div class="event-meta-item"><span>📅</span> ${evDate.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'})}</div>
           <div class="event-meta-item"><span>🕐</span> ${ev.time}</div>
           <div class="event-meta-item"><span>📍</span> ${ev.location}</div>
-          <div class="event-meta-item"><span>👥</span> ${ev.teamMode === 'team' ? `Team Based Participation- Team Size: ${ev.teamSize || 'N/A'}` : 'Individual Participation'}</div>
+          <div class="event-meta-item"><span>👥</span> ${(ev.teamMode || '').trim().toLowerCase() === 'team' ? `Team Based Participation- Team Size: ${ev.teamSize || 'N/A'}` : 'Individual Participation'}</div>
         </div>
         <div style="font-size:13px; color:var(--text2); line-height:1.5; margin-bottom:16px; height: 40px; overflow: hidden;">${linkify(ev.description) || 'No description provided.'}</div>
         <button class="btn btn-primary" onclick="event.stopPropagation(); ${isClosed ? '' : `window.location.href='/choice.html?id=${ev.eventId}'`}" style="width:100%; justify-content:center; ${regBtnStyle}" ${isClosed ? 'disabled' : ''}>${regBtnText}</button>

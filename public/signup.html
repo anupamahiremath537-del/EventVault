@@ -238,7 +238,7 @@ async function init() {
     document.getElementById('hero-date').textContent = new Date(ev.date).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     document.getElementById('hero-time').textContent = ev.time;
     document.getElementById('hero-loc').textContent = ev.location;
-    document.getElementById('hero-mode').textContent = ev.teamMode === 'team' ? `Team Based Participation- Team Size: ${ev.teamSize || 'N/A'}` : 'Individual Participation';
+    document.getElementById('hero-mode').textContent = (ev.teamMode || '').trim().toLowerCase() === 'team' ? `Team Based Participation- Team Size: ${ev.teamSize || 'N/A'}` : 'Individual Participation';
     if (ev.description) {
       document.getElementById('hero-desc').innerHTML = linkify(ev.description);
       document.getElementById('desc-card').style.display = '';

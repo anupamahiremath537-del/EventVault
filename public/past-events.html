@@ -167,7 +167,7 @@ async function loadPastEvents() {
           <div class="event-meta">
             <div class="event-meta-item"><span>📅</span>${evDate.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'})}</div>
             <div class="event-meta-item"><span>📍</span>${ev.location}</div>
-            <div class="event-meta-item"><span>👥</span>${ev.teamMode === 'team' ? `Team Based Participation- Team Size: ${ev.teamSize || 'N/A'}` : 'Individual Participation'}</div>
+            <div class="event-meta-item"><span>👥</span>${(ev.teamMode || '').trim().toLowerCase() === 'team' ? `Team Based Participation- Team Size: ${ev.teamSize || 'N/A'}` : 'Individual Participation'}</div>
           </div>
           <div style="font-size:13px; color:var(--text2); line-height:1.5;">${ev.description || 'No description provided.'}</div>
         </div>

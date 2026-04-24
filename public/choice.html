@@ -119,7 +119,7 @@ async function init() {
     document.getElementById('hero-title').textContent = ev.title;
     document.getElementById('hero-date').textContent = new Date(ev.date).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     document.getElementById('hero-loc').textContent = ev.location;
-    document.getElementById('hero-mode').textContent = ev.teamMode === 'team' ? `Team Based Participation- Team Size: ${ev.teamSize || 'N/A'}` : 'Individual Participation';
+    document.getElementById('hero-mode').textContent = (ev.teamMode || '').trim().toLowerCase() === 'team' ? `Team Based Participation- Team Size: ${ev.teamSize || 'N/A'}` : 'Individual Participation';
     
     if (ev.registrationStatus === 'closed') {
       document.querySelector('.card h2').textContent = 'Registrations Closed';

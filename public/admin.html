@@ -2115,7 +2115,7 @@ function renderRegs() {
   if (teamVal) regs = regs.filter(r => r.teamName === teamVal);
 
   const tbody = document.getElementById('reg-table-body');
-  if (!regs.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:40px">No registrations found</td></tr>'; return; }
+  if (!regs.length) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:40px">No registrations found</td></tr>'; return; }
   tbody.innerHTML = regs.map(r => `
     <tr>
       <td>
