@@ -471,6 +471,8 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 }
 .password-toggle:hover { opacity: 1; }
 .password-toggle svg { width: 18px; height: 18px; fill: var(--text); }
+.member-list { font-size: 10px; color: var(--text3); margin-top: 4px; line-height: 1.2; max-width: 150px; }
+.member-list strong { color: var(--accent); }
 </style>
 </head>
 <body>
@@ -779,7 +781,7 @@ input[type="time"]::-webkit-calendar-picker-indicator {
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Name</th><th>Email</th><th>USN</th><th>Type</th><th>Role / Event</th><th>Status</th><th>Check-in</th><th>Actions</th></tr></thead>
+          <thead><tr><th>Name</th><th>Email</th><th>USN</th><th>Team</th><th>Type</th><th>Role / Event</th><th>Status</th><th>Check-in</th><th>Actions</th></tr></thead>
           <tbody id="reg-table-body"></tbody>
         </table>
       </div>
@@ -2132,6 +2134,14 @@ function renderRegs() {
       <td style="font-family:'DM Mono',monospace;font-size:12px">
         <div>${r.usn || '—'}</div>
         ${(r.semester || r.branch) ? `<div style="font-size:10px;color:var(--text3);margin-top:2px">${r.semester || ''} ${r.branch || ''}</div>` : ''}
+      </td>
+      <td>
+        ${r.teamName ? `
+          <div style="font-weight:700; color:var(--accent); font-size:11px;">${r.teamName}</div>
+          <div class="member-list">
+            ${r.teamMembers && r.teamMembers.length > 0 ? `<strong>Members:</strong> ${r.teamMembers.map(m => m.name).join(', ')}` : '<span style="opacity:0.5 italic">Only member</span>'}
+          </div>
+        ` : '<span style="color:var(--text3); font-size:11px;">—</span>'}
       </td>
       <td><span class="badge badge-${r.type}">${r.type}</span></td>
       <td>${r.type === 'volunteer' ? (r.roleName || '—') : (r.eventTitle || '—')}</td>
