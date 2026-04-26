@@ -1,4 +1,3 @@
-
 from flask import Flask, render_template, request, jsonify, send_file, send_from_directory
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
@@ -28,7 +27,11 @@ os.makedirs('data', exist_ok=True)
 
 ENCRYPTION_KEY = get_random_bytes(32)
 
-# Helper functions to load/save data
+def encrypt_data(data):
+    cipher = AES.new(ENCRYPTION_KEY, AES.MODE_CBC)
+    ct_bytes = cipher.encrypt(pad(data.encode(), AES.block_size))
+    return base64.b64encode(cipher.iv + ct_bytes).decode()
+
 def load_data(file_path, default_key='data'):
     if os.path.exists(file_path):
         try:
@@ -37,7 +40,6 @@ def load_data(file_path, default_key='data'):
         except:
             pass
     
-    # Provide sample data for events if file is missing
     if default_key == 'events':
         return {
             "events": [
@@ -71,10 +73,8 @@ def index():
 def admin_page():
     return render_template('admin.html')
 
-# --- AUTH ROUTES ---
 @app.route('/api/auth/verify', methods=['GET'])
 def verify_auth():
-    # Mock authentication verification for the admin
     return jsonify({
         "valid": True, 
         "user": {"role": "admin", "username": "admin", "email": "admin@example.com"}
@@ -91,7 +91,6 @@ def login():
         "user": {"role": "admin", "username": username}
     })
 
-# --- EVENT ROUTES ---
 @app.route('/api/events', methods=['GET'])
 def get_events():
     data = load_data(app.config['EVENTS_FILE'], 'events')
@@ -130,20 +129,16 @@ def delete_event(event_id):
 
 @app.route('/api/events/<event_id>/toggle-registration', methods=['PATCH'])
 def toggle_registration(event_id):
-    print(f"DEBUG: Toggle registration request for event ID: {event_id}")
     data = load_data(app.config['EVENTS_FILE'], 'events')
-    
-    found = False
+    found_ev = None
     for ev in data['events']:
         if ev['eventId'] == event_id:
             ev['registrationStatus'] = 'closed' if ev.get('registrationStatus') == 'open' else 'open'
-            found = True
+            found_ev = ev
             break
             
-    if not found:
-        print(f"DEBUG: Event {event_id} not found in database. Creating placeholder.")
-        # If not found, create it as a placeholder to prevent 404
-        new_ev = {
+    if not found_ev:
+        found_ev = {
             "eventId": event_id,
             "title": "Restored Event",
             "date": datetime.now().strftime("%Y-%m-%d"),
@@ -155,15 +150,11 @@ def toggle_registration(event_id):
             "volunteerCount": 0,
             "createdBy": "admin"
         }
-        data['events'].append(new_ev)
+        data['events'].append(found_ev)
     
     save_data(app.config['EVENTS_FILE'], data)
-    
-    # Find the event again to return it
-    result = next((e for e in data['events'] if e['eventId'] == event_id), None)
-    return jsonify(result)
+    return jsonify(found_ev)
 
-# --- REGISTRATION ROUTES ---
 @app.route('/api/registrations/all', methods=['GET'])
 def get_all_registrations():
     data = load_data(app.config['REGS_FILE'], 'registrations')
@@ -193,7 +184,6 @@ def checkin_reg(reg_id):
 def broadcast():
     return jsonify({"success": True, "message": "Broadcast sent successfully!"})
 
-# --- IMAGE SERVING ---
 @app.route('/images/<path:filename>')
 def serve_image(filename):
     base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -201,7 +191,6 @@ def serve_image(filename):
         return send_from_directory(os.path.join(base_dir, app.config['UPLOAD_FOLDER']), filename)
     return send_from_directory(base_dir, filename)
 
-# --- STATS ---
 @app.route('/api/stats', methods=['GET'])
 def get_stats():
     stats = []
@@ -228,7 +217,6 @@ def get_stats():
 
 @app.route('/api/alerts', methods=['GET'])
 def get_alerts():
-    # Return mock alerts for demo
     return jsonify({
         "alerts": [
             {
@@ -243,25 +231,6 @@ def get_alerts():
             }
         ]
     })
-
-@app.before_request
-def log_request_info():
-    if request.path.startswith('/api'):
-        print(f"DEBUG: Incoming {request.method} request to {request.path}")
-
-@app.route('/api/<path:path>', methods=['GET', 'POST', 'PUT', 'DELETE', 'PATCH'])
-def catch_all_api(path):
-    print(f"DEBUG: Catch-all reached for path: {path} with method: {request.method}")
-    # If it's a toggle registration path but wasn't caught by the main route
-    if 'toggle-registration' in path:
-        parts = path.split('/')
-        # Extract eventId from /api/events/ID/toggle-registration
-        # path here would be "events/ID/toggle-registration"
-        if len(parts) >= 2:
-            event_id = parts[1]
-            return toggle_registration(event_id)
-            
-    return jsonify({"error": "API route not found", "path": path}), 404
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
