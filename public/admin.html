@@ -2125,11 +2125,8 @@ function renderRegs() {
   if (!regs.length) { tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:40px">No registrations found</td></tr>'; return; }
   
   tbody.innerHTML = regs.map((r, index) => {
-    // Robust photo pathing: check if it's already a full URL/Base64 or needs /images/ prefix
-    let photoUrl = r.photo;
-    if (photoUrl && !photoUrl.startsWith('http') && !photoUrl.startsWith('data:') && !photoUrl.startsWith('/')) {
-        photoUrl = '/images/' + photoUrl;
-    }
+    // Use dedicated photo endpoint to avoid heavy JSON payload
+    const photoUrl = `/api/registrations/${r.registrationId}/photo`;
     
     return `
     <tr>
@@ -2137,7 +2134,8 @@ function renderRegs() {
       <td>
         <div style="display:flex; gap:10px; align-items:center;">
           <div style="width:32px; height:32px; border-radius:50%; background:#f0f0f0; overflow:hidden; border:1px solid var(--border); flex-shrink:0; display:flex; align-items:center; justify-content:center;">
-            ${photoUrl ? `<img src="${photoUrl}" style="width:100%; height:100%; object-fit:cover;" onerror="this.innerHTML='👤';this.src='';">` : '<span style="font-size:14px; opacity:0.5;">👤</span>'}
+            <img src="${photoUrl}" style="width:100%; height:100%; object-fit:cover;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+            <span style="font-size:14px; opacity:0.5; display:none;">👤</span>
           </div>
           <div style="min-width:0;">
             <div style="font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--text);">${r.name}</div>

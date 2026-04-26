@@ -883,4 +883,21 @@ router.get('/swap-requests', authMiddleware, async (req, res) => {
   }
 });
 
+// GET /api/registrations/:id/photo - Fetch only the photo for a registration
+router.get('/:id/photo', async (req, res) => {
+  try {
+    const reg = await db.findOne('registrations', { registrationId: req.params.id }, { select: 'photo' });
+    if (!reg || !reg.photo) return res.status(404).send('No photo');
+    
+    if (reg.photo.startsWith('data:')) {
+      const parts = reg.photo.split(',');
+      const mime = parts[0].match(/:(.*?);/)[1];
+      const img = Buffer.from(parts[1], 'base64');
+      res.writeHead(200, { 'Content-Type': mime, 'Content-Length': img.length });
+      return res.end(img);
+    }
+    res.redirect(reg.photo);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 module.exports = router;
