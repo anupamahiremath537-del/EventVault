@@ -128,4 +128,22 @@ router.delete('/:eventId', authMiddleware, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Toggle registration status
+router.patch('/:eventId/toggle-registration', authMiddleware, async (req, res) => {
+  try {
+    const eventId = req.params.eventId.trim();
+    let event = await db.findOne('events', { eventId });
+    if (!event) event = await db.findOne('events', { id: eventId });
+    
+    if (!event) return res.status(404).json({ error: 'Event not found' });
+
+    const newStatus = event.registrationStatus === 'closed' ? 'open' : 'closed';
+    await db.update('events', { eventId: event.eventId }, { $set: { registrationStatus: newStatus } });
+    
+    res.json({ ...event, registrationStatus: newStatus });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

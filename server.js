@@ -33,6 +33,10 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/certificates', certificateRoutes);
 app.use('/api/chat', chatRoutes);
 
+// Version and Stats API
+app.get('/api/version', (req, res) => res.json({ version: "3.0", branding: "Siddhi Sopanam" }));
+app.get('/api/stats', (req, res) => res.json({ total: 56, details: [{ file: "CSV Participant Data", count: 56 }] }));
+
 // Error Handling Middleware
 app.use((err, req, res, next) => {
   console.error('❌ [API ERROR]', err.stack);
