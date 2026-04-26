@@ -784,13 +784,20 @@ router.get('/all', authMiddleware, async (req, res) => {
       select: selectFields,
     });
 
+    if (!regs) regs = [];
     console.log(`[Registrations API] Found ${regs.length} registrations.`);
     
     // Fetch ONLY events related to these registrations to avoid N+1 and massive fetches
-    const uniqueEventIds = [...new Set(regs.map(r => r.eventId).filter(id => id))];
-    const events = await db.find('events', { eventId: { $in: uniqueEventIds } });
-    const allEventsMap = {};
-    events.forEach(e => allEventsMap[e.eventId] = e);
+    const uniqueEventIds = [...new Set(regs.map(r => r.eventId).filter(id => id && typeof id === 'string'))];
+    let allEventsMap = {};
+    if (uniqueEventIds.length > 0) {
+      try {
+        const events = await db.find('events', { eventId: { $in: uniqueEventIds } });
+        (events || []).forEach(e => allEventsMap[e.eventId] = e);
+      } catch (evErr) {
+        console.error('[Registrations API] Error fetching related events:', evErr.message);
+      }
+    }
 
     // Filter by Category and Date on the results
     if (category || startDate || endDate) {
