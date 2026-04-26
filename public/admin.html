@@ -1544,9 +1544,10 @@ async function loadOrganizers() {
   try {
     const orgs = await get('/auth/organizers');
     const tbody = document.getElementById('org-table-body');
-    if (!orgs.length) { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:40px">No organizers found</td></tr>'; return; }
-    tbody.innerHTML = orgs.map(o => `
+    if (!orgs.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:40px">No organizers found</td></tr>'; return; }
+    tbody.innerHTML = orgs.map((o, index) => `
       <tr>
+        <td style="font-family:var(--font-mono); font-size:12px; color:var(--text3); font-weight:700;">#${index + 1}</td>
         <td>${o.name}</td>
         <td>${o.username}</td>
         <td><span class="badge ${o.approved ? 'badge-confirmed' : 'badge-cancelled'}">${o.approved ? 'Approved' : 'Pending'}</span></td>
