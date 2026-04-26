@@ -2117,26 +2117,25 @@ function renderRegs() {
   const teamVal = document.getElementById('reg-team-filter').value;
   if (teamVal) regs = regs.filter(r => r.teamName === teamVal);
 
-  // Add dynamic count to title
-  const titleEl = document.querySelector('#page-registrations .page-title');
-  if (titleEl) titleEl.innerHTML = `Registrations <span style="font-size:16px; background:var(--accent); color:white; padding:4px 12px; border-radius:12px; vertical-align:middle; margin-left:10px;">${regs.length} Total</span>`;
+  // Update count in header
+  const regCountEl = document.getElementById('reg-count-badge');
+  if (regCountEl) regCountEl.textContent = regs.length;
 
   const tbody = document.getElementById('reg-table-body');
   if (!regs.length) { tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:40px">No registrations found</td></tr>'; return; }
   
   tbody.innerHTML = regs.map((r, index) => {
-    // Use dedicated photo endpoint to avoid heavy JSON payload
-    const photoUrl = `/api/registrations/${r.registrationId}/photo`;
+    // Show actual photo from DB if available
+    const photoHtml = r.photo 
+      ? `<img src="${r.photo}" style="width:32px; height:32px; border-radius:50%; object-fit:cover; border:1px solid var(--border);">`
+      : `<div style="width:32px; height:32px; border-radius:50%; background:var(--surface2); display:flex; align-items:center; justify-content:center; font-size:14px; opacity:0.5;">👤</div>`;
     
     return `
     <tr>
       <td style="font-family:var(--font-mono); font-size:12px; color:var(--accent); font-weight:700;">#${index + 1}</td>
       <td>
         <div style="display:flex; gap:10px; align-items:center;">
-          <div style="width:32px; height:32px; border-radius:50%; background:#f0f0f0; overflow:hidden; border:1px solid var(--border); flex-shrink:0; display:flex; align-items:center; justify-content:center;">
-            <img src="${photoUrl}" style="width:100%; height:100%; object-fit:cover;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-            <span style="font-size:14px; opacity:0.5; display:none;">👤</span>
-          </div>
+          <div style="flex-shrink:0;">${photoHtml}</div>
           <div style="min-width:0;">
             <div style="font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--text);">${r.name}</div>
             ${r.teamName ? `<div style="font-size:10px;color:var(--accent);margin-top:2px;font-weight:700">Team: ${r.teamName}</div>` : ''}
