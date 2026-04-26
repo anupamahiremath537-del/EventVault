@@ -777,8 +777,8 @@ router.get('/all', authMiddleware, async (req, res) => {
     if (type && type !== 'all') query.type = type;
 
     console.log('[Registrations API] Fetching registrations from DB...');
-    // Removed hard limit to prevent gateway timeouts on massive fetches
-    const selectFields = 'id,eventid,registrationid,name,email,phone,usn,password,type,roleid,rolename,teamname,teammembers,status,checkedin,checkinat,registeredat,swaprequested,noshow,hoursvolunteered,photo';
+    // CRITICAL: Exclude 'photo' here. It causes 522 timeouts because it's too heavy.
+    const selectFields = 'id,eventid,registrationid,name,email,phone,usn,type,roleid,rolename,teamname,status,checkedin,checkinat,registeredat,swaprequested,noshow,hoursvolunteered';
     let regs = await db.find('registrations', query, {
       sort: { registeredAt: -1 },
       select: selectFields,
