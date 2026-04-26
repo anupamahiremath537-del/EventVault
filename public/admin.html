@@ -2171,7 +2171,7 @@ function renderRegs() {
           ${r.status !== 'cancelled' && r.status !== 'no-show' ? `<button class="btn btn-sm btn-outline" onclick="markNoShow('${r.registrationId}')">NS</button>` : ''}
         `}
       </td>
-    </tr>`).join('');
+    </tr>`}).join('');
 }
 
 async function approveReg(id) {
