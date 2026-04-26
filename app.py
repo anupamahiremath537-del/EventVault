@@ -1,14 +1,9 @@
-from flask import Flask, render_template, request, jsonify, send_file, send_from_directory
+from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_cors import CORS
-from werkzeug.utils import secure_filename
 import os
 import uuid
 import json
 from datetime import datetime
-import base64
-from Crypto.Cipher import AES
-from Crypto.Util.Padding import pad, unpad
-from Crypto.Random import get_random_bytes
 
 app = Flask(__name__)
 CORS(app)
@@ -16,7 +11,6 @@ CORS(app)
 # Configuration
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-secret-key-here')
 app.config['UPLOAD_FOLDER'] = 'uploads'
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 app.config['DATA_FILE'] = 'data/alerts.json'
 app.config['EVENTS_FILE'] = 'data/events.json'
 app.config['REGS_FILE'] = 'data/registrations.json'
@@ -26,15 +20,19 @@ app.config['PUBLIC_FOLDER'] = 'public'
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs('data', exist_ok=True)
 
-ENCRYPTION_KEY = get_random_bytes(32)
+# --- ERROR HANDLER ---
+@app.errorhandler(Exception)
+def handle_exception(e):
+    print(f"CRITICAL ERROR: {str(e)}")
+    return jsonify({"error": "Internal Server Error", "message": str(e)}), 500
 
 def load_data(file_path, default_key='data'):
     if os.path.exists(file_path):
         try:
             with open(file_path, 'r') as f:
                 return json.load(f)
-        except:
-            pass
+        except Exception as e:
+            print(f"Error loading {file_path}: {e}")
     
     if default_key == 'events':
         return {
@@ -49,17 +47,20 @@ def load_data(file_path, default_key='data'):
                     "registrationStatus": "open",
                     "participantCount": 0,
                     "volunteerCount": 0,
-                    "volunteerRoles": [{"id": "r1", "name": "Registration Desk", "slots": 5}],
                     "participantLimit": 2, 
-                    "createdBy": "admin"
+                    "createdBy": "admin",
+                    "roles": [{"id": "r1", "name": "Volunteer", "slots": 5, "filled": 0, "remaining": 5}]
                 }
             ]
         }
     return {default_key: []}
 
 def save_data(file_path, data):
-    with open(file_path, 'w') as f:
-        json.dump(data, f, indent=2)
+    try:
+        with open(file_path, 'w') as f:
+            json.dump(data, f, indent=2)
+    except Exception as e:
+        print(f"Error saving {file_path}: {e}")
 
 # --- SERVE STATIC FILES ---
 @app.route('/')
@@ -68,9 +69,6 @@ def index_root():
 
 @app.route('/admin')
 def admin_page():
-    # Force serve admin.html from templates or public
-    if os.path.exists('templates/admin.html'):
-        return render_template('admin.html')
     return send_from_directory(app.config['PUBLIC_FOLDER'], 'admin.html')
 
 # --- AUTH ROUTES ---
@@ -85,12 +83,10 @@ def verify_auth():
 @app.route('/api/login', methods=['POST'])
 @app.route('/login', methods=['POST'])
 def login_api():
-    data = request.json or request.form or {}
-    u = data.get('username') or data.get('email') or 'admin'
     return jsonify({
         "success": True, 
         "token": "mock-token-for-demo",
-        "user": {"role": "admin", "username": u, "approved": True, "email": u}
+        "user": {"role": "admin", "username": "admin", "approved": True}
     })
 
 # --- EVENT ROUTES ---
@@ -99,25 +95,19 @@ def get_events_api():
     data = load_data(app.config['EVENTS_FILE'], 'events')
     return jsonify(data['events'])
 
-@app.route('/api/events', methods=['POST'])
-def create_event_api():
+@app.route('/api/events/<event_id>', methods=['GET'])
+def get_event_single(event_id):
     data = load_data(app.config['EVENTS_FILE'], 'events')
-    new_event = request.json or request.form
-    new_event = dict(new_event)
-    new_event['eventId'] = str(uuid.uuid4())
-    new_event['registrationStatus'] = 'open'
-    new_event['participantCount'] = 0
-    new_event['volunteerCount'] = 0
-    data['events'].append(new_event)
-    save_data(app.config['EVENTS_FILE'], data)
-    return jsonify(new_event)
+    event = next((e for e in data['events'] if str(e['eventId']) == str(event_id)), None)
+    if event: return jsonify(event)
+    return jsonify({"error": "Event not found"}), 404
 
 @app.route('/api/events/<event_id>/toggle-registration', methods=['PATCH', 'POST'])
 def toggle_reg_api(event_id):
     data = load_data(app.config['EVENTS_FILE'], 'events')
     found_ev = None
     for ev in data['events']:
-        if ev['eventId'] == event_id:
+        if str(ev['eventId']) == str(event_id):
             ev['registrationStatus'] = 'closed' if ev.get('registrationStatus', 'open') == 'open' else 'open'
             found_ev = ev
             break
@@ -125,9 +115,7 @@ def toggle_reg_api(event_id):
     if not found_ev:
         found_ev = {
             "eventId": event_id,
-            "title": "Restored Event",
-            "date": datetime.now().strftime("%Y-%m-%d"),
-            "location": "BGMIT",
+            "title": "New Event",
             "registrationStatus": "closed",
             "participantCount": 0,
             "volunteerCount": 0
@@ -140,18 +128,14 @@ def toggle_reg_api(event_id):
 # --- REGISTRATION ROUTES ---
 @app.route('/api/registrations', methods=['POST'])
 def submit_reg_api():
-    reg_data = request.json or request.form
-    reg_data = dict(reg_data)
+    reg_data = request.json or {}
     event_id = reg_data.get('eventId')
     
     events_data = load_data(app.config['EVENTS_FILE'], 'events')
-    event = next((e for e in events_data['events'] if e['eventId'] == event_id), None)
+    event = next((e for e in events_data['events'] if str(e['eventId']) == str(event_id)), None)
     
-    if not event:
-        return jsonify({"error": "Event not found"}), 404
-        
-    if event.get('registrationStatus') == 'closed':
-        return jsonify({"error": "Registrations are closed"}), 400
+    if not event: return jsonify({"error": "Event not found"}), 404
+    if event.get('registrationStatus') == 'closed': return jsonify({"error": "Registrations closed"}), 400
         
     if reg_data.get('type') == 'participant':
         if int(event.get('participantCount', 0)) >= int(event.get('participantLimit', 100)):
@@ -159,7 +143,7 @@ def submit_reg_api():
 
     data = load_data(app.config['REGS_FILE'], 'registrations')
     reg_data['registrationId'] = str(uuid.uuid4())
-    reg_data['status'] = 'pending'
+    reg_data['status'] = 'confirmed'
     data['registrations'].append(reg_data)
     save_data(app.config['REGS_FILE'], data)
     
@@ -169,18 +153,33 @@ def submit_reg_api():
         event['volunteerCount'] = event.get('volunteerCount', 0) + 1
     save_data(app.config['EVENTS_FILE'], events_data)
     
-    return jsonify({"success": True, "registration": reg_data})
+    return jsonify({"success": True, "registration": reg_data, "eventTitle": event.get('title')})
 
-@app.route('/api/registrations/all', methods=['GET'])
-def get_all_regs_api():
+@app.route('/api/registrations/my', methods=['GET'])
+def get_my_regs():
+    email = request.args.get('email')
     data = load_data(app.config['REGS_FILE'], 'registrations')
-    return jsonify(data['registrations'])
+    my_regs = [r for r in data['registrations'] if r.get('email') == email]
+    return jsonify(my_regs)
+
+@app.route('/api/auth/send-otp', methods=['POST'])
+def send_otp():
+    return jsonify({"success": True, "message": "OTP sent! Use 123456"})
+
+@app.route('/api/auth/verify-otp', methods=['POST'])
+def verify_otp():
+    return jsonify({"success": True})
 
 @app.route('/api/stats', methods=['GET'])
 def get_stats_api():
-    return jsonify({"total": 56})
+    return jsonify({"total": 56, "details": [{"file": "Total System Count", "count": 56}]})
 
-# --- CATCH ALL FOR OTHER PUBLIC FILES ---
+# --- IMAGE SERVING ---
+@app.route('/images/<path:filename>')
+def serve_image(filename):
+    return send_from_directory(app.config['PUBLIC_FOLDER'], filename)
+
+# --- CATCH ALL ---
 @app.route('/<path:path>')
 def serve_any_public(path):
     return send_from_directory(app.config['PUBLIC_FOLDER'], path)
