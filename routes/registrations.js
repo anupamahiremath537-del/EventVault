@@ -837,8 +837,11 @@ router.get('/all', authMiddleware, async (req, res) => {
     console.log('[Registrations API] Returning enriched registrations.');
     res.json(enriched);
   } catch (err) {
-    console.error('❌ [REGISTRATIONS API ERROR]', err.stack);
-    res.status(500).json({ error: err.message });
+    console.error('❌ [REGISTRATIONS API ERROR]', err);
+    res.status(500).json({ 
+      error: err.message || 'Internal Server Error',
+      details: err.details || null
+    });
   }
 });
 

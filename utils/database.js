@@ -94,7 +94,10 @@ const db = {
     if (options.limit) b = b.range(options.skip || 0, (options.skip || 0) + options.limit - 1);
     
     const { data, error } = await b;
-    if (error) throw error;
+    if (error) {
+      console.error(`[DB Find Error] ${collection}:`, error);
+      throw error;
+    }
     return (data || []).map(mapRecord);
   },
   async count(collection, query) {
