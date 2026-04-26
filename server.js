@@ -34,7 +34,7 @@ app.use('/api/certificates', certificateRoutes);
 app.use('/api/chat', chatRoutes);
 
 // Version and Stats API
-app.get('/api/version', (req, res) => res.json({ version: "3.4", status: "Active", timestamp: new Date().toISOString() }));
+app.get('/api/version', (req, res) => res.json({ version: "3.5", status: "Registrations Updated", timestamp: new Date().toISOString() }));
 app.get('/api/stats', (req, res) => res.json({ total: 56, details: [{ file: "CSV Participant Data", count: 56 }] }));
 app.get('/api/alerts', (req, res) => {
   res.json({
