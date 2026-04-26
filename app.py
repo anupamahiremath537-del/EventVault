@@ -161,6 +161,51 @@ def get_all_registrations():
     data = load_data(app.config['REGS_FILE'], 'registrations')
     return jsonify(data['registrations'])
 
+@app.route('/api/registrations', methods=['POST'])
+def submit_registration():
+    reg_data = request.json
+    event_id = reg_data.get('eventId')
+    
+    # 1. Load Event to check limit
+    events_data = load_data(app.config['EVENTS_FILE'], 'events')
+    event = next((e for e in events_data['events'] if e['eventId'] == event_id), None)
+    
+    if not event:
+        return jsonify({"error": "Event not found"}), 404
+        
+    if event.get('registrationStatus') == 'closed':
+        return jsonify({"error": "Registrations for this event are closed."}), 400
+        
+    # 2. Check Participant Limit
+    if reg_data.get('type') == 'participant':
+        limit = int(event.get('participantLimit', 100))
+        current = int(event.get('participantCount', 0))
+        if current >= limit:
+            return jsonify({"error": "Participant limit reached for this event."}), 400
+
+    # 3. Save Registration
+    data = load_data(app.config['REGS_FILE'], 'registrations')
+    reg_data['registrationId'] = str(uuid.uuid4())
+    reg_data['status'] = 'pending'
+    reg_data['checkedIn'] = False
+    reg_data['registeredAt'] = datetime.now().isoformat()
+    data['registrations'].append(reg_data)
+    save_data(app.config['REGS_FILE'], data)
+    
+    # 4. Update Event Counts
+    if reg_data.get('type') == 'participant':
+        event['participantCount'] = event.get('participantCount', 0) + 1
+    else:
+        event['volunteerCount'] = event.get('volunteerCount', 0) + 1
+    save_data(app.config['EVENTS_FILE'], events_data)
+    
+    return jsonify({"success": True, "message": "Registration successful!", "registration": reg_data})
+
+@app.route('/api/registrations/check-limit', methods=['GET'])
+def check_limit():
+    # Helper for frontend validation
+    return jsonify({"success": True})
+
 @app.route('/api/registrations/<reg_id>/approve', methods=['PATCH', 'POST'])
 def approve_reg(reg_id):
     data = load_data(app.config['REGS_FILE'], 'registrations')
