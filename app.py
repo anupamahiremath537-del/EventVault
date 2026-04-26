@@ -77,9 +77,10 @@ def admin_page():
 def verify_auth():
     return jsonify({
         "valid": True, 
-        "user": {"role": "admin", "username": "admin", "email": "admin@example.com"}
+        "user": {"role": "admin", "username": "admin", "email": "admin@example.com", "approved": True}
     })
 
+@app.route('/api/auth/login', methods=['POST'])
 @app.route('/login', methods=['POST'])
 def login():
     data = request.json or {}
@@ -88,7 +89,7 @@ def login():
         "success": True, 
         "message": f"Welcome, {username}!",
         "token": "mock-token-for-demo",
-        "user": {"role": "admin", "username": username}
+        "user": {"role": "admin", "username": username, "approved": True}
     })
 
 @app.route('/api/events', methods=['GET'])
@@ -108,7 +109,7 @@ def create_event():
     save_data(app.config['EVENTS_FILE'], data)
     return jsonify(new_event)
 
-@app.route('/api/events/<event_id>', methods=['PUT'])
+@app.route('/api/events/<event_id>', methods=['PUT', 'PATCH'])
 def update_event(event_id):
     data = load_data(app.config['EVENTS_FILE'], 'events')
     for i, ev in enumerate(data['events']):
@@ -127,7 +128,7 @@ def delete_event(event_id):
     save_data(app.config['EVENTS_FILE'], data)
     return jsonify({"success": True})
 
-@app.route('/api/events/<event_id>/toggle-registration', methods=['PATCH'])
+@app.route('/api/events/<event_id>/toggle-registration', methods=['PATCH', 'POST'], strict_slashes=False)
 def toggle_registration(event_id):
     data = load_data(app.config['EVENTS_FILE'], 'events')
     found_ev = None
@@ -160,7 +161,7 @@ def get_all_registrations():
     data = load_data(app.config['REGS_FILE'], 'registrations')
     return jsonify(data['registrations'])
 
-@app.route('/api/registrations/<reg_id>/approve', methods=['PATCH'])
+@app.route('/api/registrations/<reg_id>/approve', methods=['PATCH', 'POST'])
 def approve_reg(reg_id):
     data = load_data(app.config['REGS_FILE'], 'registrations')
     for reg in data['registrations']:
@@ -170,7 +171,7 @@ def approve_reg(reg_id):
             return jsonify(reg)
     return jsonify({"error": "Registration not found"}), 404
 
-@app.route('/api/registrations/<reg_id>/checkin', methods=['PATCH'])
+@app.route('/api/registrations/<reg_id>/checkin', methods=['PATCH', 'POST'])
 def checkin_reg(reg_id):
     data = load_data(app.config['REGS_FILE'], 'registrations')
     for reg in data['registrations']:
