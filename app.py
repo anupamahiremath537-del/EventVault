@@ -69,9 +69,10 @@ def index():
 
 @app.route('/images/<path:filename>')
 def serve_image(filename):
+    base_dir = os.path.dirname(os.path.abspath(__file__))
     if os.path.exists(os.path.join(app.config['UPLOAD_FOLDER'], filename)):
-        return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
-    return send_from_directory('.', filename)
+        return send_from_directory(os.path.join(base_dir, app.config['UPLOAD_FOLDER']), filename)
+    return send_from_directory(base_dir, filename)
 
 @app.route('/login', methods=['POST'])
 def login():
