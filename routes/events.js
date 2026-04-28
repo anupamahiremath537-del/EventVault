@@ -16,12 +16,26 @@ router.get('/', async (req, res) => {
       events = events.filter(e => e.isSupportiveTeam !== true && e.isSupportiveTeam !== 'true');
     }
 
-    // 3. Count registrations individually
-    const enriched = await Promise.all(events.map(async ev => {
-      const pCount = await db.count('registrations', { eventId: ev.eventId, type: 'participant', status: { $ne: 'cancelled' } });
-      const vCount = await db.count('registrations', { eventId: ev.eventId, type: 'volunteer', status: { $ne: 'cancelled' } });
-      return { ...ev, participantCount: pCount, volunteerCount: vCount, roles: (ev.volunteerRoles || []).map(r => ({ ...r, filled: 0, remaining: r.slots })) };
-    }));
+    // 3. Count registrations in batch to avoid N+1 queries
+    const allRegs = await db.find('registrations', { status: { $ne: 'cancelled' } }, { select: 'eventid,type,roleid' });
+    
+    const enriched = events.map(ev => {
+      const evRegs = allRegs.filter(r => r.eventId === ev.eventId);
+      const pCount = evRegs.filter(r => r.type === 'participant').length;
+      const vRegs = evRegs.filter(r => r.type === 'volunteer');
+      
+      const roles = (ev.volunteerRoles || []).map(r => {
+        const filled = vRegs.filter(vr => vr.roleId === r.id).length;
+        return { ...r, filled, remaining: Math.max(0, r.slots - filled) };
+      });
+
+      return { 
+        ...ev, 
+        participantCount: pCount, 
+        volunteerCount: vRegs.length, 
+        roles 
+      };
+    });
 
     res.json(enriched);
   } catch (err) {
@@ -111,6 +125,23 @@ router.put('/:eventId/results', authMiddleware, async (req, res) => {
 
     await db.update('events', { id: event._id }, { results: req.body.results, updatedAt: new Date() });
     res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// Get event registrations
+router.get('/:eventId/registrations', authMiddleware, async (req, res) => {
+  try {
+    const eventId = req.params.eventId.trim();
+    let event = await db.findOne('events', { eventId });
+    if (!event) event = await db.findOne('events', { id: eventId });
+    if (!event) return res.status(404).json({ error: 'Event not found' });
+
+    if (req.user.role === 'organizer' && event.createdBy !== req.user.username) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const regs = await db.find('registrations', { eventId: event.eventId, status: { $ne: 'cancelled' } });
+    res.json(regs);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

@@ -81,9 +81,20 @@ router.get('/csv', authMiddleware, async (req, res) => {
       });
     }
 
-    const allUsers = await db.find('users', {});
+    // Fetch ONLY related users to avoid massive memory usage
+    const emails = [...new Set(regs.map(r => r.email?.toLowerCase()).filter(e => !!e))];
+    const usns = [...new Set(regs.map(r => r.usn?.toLowerCase()).filter(u => !!u))];
+    
+    // Using $or with conditions for each email/usn (since our db.js wrapper handles $or this way)
+    const relatedUsers = await db.find('users', { 
+      $or: [
+        ...emails.slice(0, 50).map(e => ({ email: e })),
+        ...usns.slice(0, 50).map(u => ({ usn: u }))
+      ]
+    });
+
     const userMap = {};
-    allUsers.forEach(u => {
+    relatedUsers.forEach(u => {
       if (u.email) userMap[u.email.toLowerCase()] = u;
       if (u.usn) userMap[u.usn.toLowerCase()] = u;
     });
@@ -815,20 +826,22 @@ router.get('/all', authMiddleware, async (req, res) => {
       });
     }
 
-    // Fetch ONLY users related to these registrations
-    const emails = [...new Set(regs.map(r => r.email).filter(e => e))];
-    const usns = [...new Set(regs.map(r => r.usn).filter(u => u))];
-    let userMap = {};
+    // Fetch ONLY related users to avoid massive memory usage
+    const emails = [...new Set(regs.map(r => r.email?.toLowerCase()).filter(e => !!e))];
+    const usns = [...new Set(regs.map(r => r.usn?.toLowerCase()).filter(u => !!u))];
     
+    let userMap = {};
     if (emails.length > 0 || usns.length > 0) {
       try {
-        const users = await db.find('users', {
+        // Using $or with conditions for each email/usn (since our db.js wrapper handles $or this way)
+        const relatedUsers = await db.find('users', { 
           $or: [
-            { email: { $in: emails } },
-            { usn: { $in: usns } }
+            ...emails.slice(0, 50).map(e => ({ email: e })),
+            ...usns.slice(0, 50).map(u => ({ usn: u }))
           ]
         });
-        (users || []).forEach(u => {
+
+        relatedUsers.forEach(u => {
           if (u.email) userMap[u.email.toLowerCase()] = u;
           if (u.usn) userMap[u.usn.toLowerCase()] = u;
         });

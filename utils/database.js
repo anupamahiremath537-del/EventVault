@@ -1,9 +1,37 @@
 const { createClient } = require('@supabase/supabase-js');
 const { v4: uuidv4 } = require('uuid');
+const { supabaseConfigs } = require('../config/supabase');
 
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY, {
-  auth: { persistSession: false, autoRefreshToken: false }
-});
+// Create clients for each project
+const supabaseClients = supabaseConfigs.map(config =>
+  createClient(config.projectUrl, config.serviceRoleKey || config.anonKey, {
+    auth: { persistSession: false, autoRefreshToken: false }
+  })
+);
+
+// Function to get the appropriate client (e.g., shard by ID or round-robin for load balancing)
+function getSupabaseClient(shardKey) {
+  if (typeof shardKey === 'number') {
+    // Simple sharding example: modulo based on shardKey (e.g., user ID)
+    const index = shardKey % supabaseClients.length;
+    return supabaseClients[index];
+  } else if (typeof shardKey === 'string') {
+    // For strings, hash to a number
+    let hash = 0;
+    for (let i = 0; i < shardKey.length; i++) {
+      hash = (hash << 5) - hash + shardKey.charCodeAt(i);
+      hash |= 0; // Convert to 32-bit integer
+    }
+    const index = Math.abs(hash) % supabaseClients.length;
+    return supabaseClients[index];
+  } else {
+    // Default to first client if no valid shardKey
+    return supabaseClients[0];
+  }
+}
+
+// For backward compatibility, default to the first client
+const supabase = supabaseClients[0];
 
 const normalizeField = k => ({ eventId: 'eventid', registrationId: 'registrationid', roleId: 'roleid', _id: 'id' }[k] || k.toLowerCase());
 
@@ -59,12 +87,14 @@ const db = {
     return docs[0] || null;
   },
   async find(collection, query = {}, options = {}) {
-    let select = options.select || '*';
+    const { shardKey, ...opts } = options;
+    const client = shardKey ? getSupabaseClient(shardKey) : supabase;
+    let select = opts.select || '*';
     if (collection === 'registrations' && select === '*') {
       select = 'id,eventid,registrationid,name,email,phone,usn,password,type,roleid,rolename,teamname,teammembers,status,checkedin,registeredat,photo,teamid,userId,noshow,approvedat';
     }
     
-    let b = supabase.from(collection).select(select);
+    let b = client.from(collection).select(select);
     for (const [k, v] of Object.entries(query)) {
       const f = normalizeField(k);
       
@@ -100,8 +130,10 @@ const db = {
     }
     return (data || []).map(mapRecord);
   },
-  async count(collection, query) {
-    let b = supabase.from(collection).select('*', { count: 'exact', head: true });
+  async count(collection, query, options = {}) {
+    const { shardKey } = options;
+    const client = shardKey ? getSupabaseClient(shardKey) : supabase;
+    let b = client.from(collection).select('*', { count: 'exact', head: true });
     for (const [k, v] of Object.entries(query)) {
       const f = normalizeField(k);
       
@@ -171,4 +203,4 @@ const db = {
   }
 };
 
-module.exports = db;
+module.exports = { db, supabase, supabaseClients, getSupabaseClient };

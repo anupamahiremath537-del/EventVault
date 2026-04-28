@@ -32,17 +32,17 @@ async function sendReminders() {
 
       console.log(`[Reminder Service] Found ${registrations.length} registrations for ${event.title}.`);
 
+      // 4. Get all existing reminders for this event to avoid N+1 queries
+      const sentReminders = await db.find('reminders', { 
+        eventId: event.eventId,
+        type: '24h'
+      });
+      const sentRegIds = new Set(sentReminders.map(r => r.registrationId));
+
       for (const reg of registrations) {
         if (!reg.email) continue;
 
-        // 4. Check if a '24h' reminder has already been sent for this registration
-        const alreadySent = await db.findOne('reminders', { 
-          registrationId: reg.registrationId, 
-          eventId: event.eventId,
-          type: '24h'
-        });
-
-        if (alreadySent) {
+        if (sentRegIds.has(reg.registrationId)) {
           continue; // Already sent
         }
 
